@@ -7,9 +7,10 @@
 
 #define TIMEOUT 10000
 
-class Server {};
+class Server {}; // holds server configuration (locations)
+class Socket {}; // holds sockets, servers and connections.
 
-std::vector<Server> get_servers(void)
+std::vector<Server> build_servers(void) // <- from JSON
 {
 	std::vector<Server> servers;
 
@@ -17,16 +18,24 @@ std::vector<Server> get_servers(void)
 	return (servers);
 }
 
-std::unordered_map<int, Server&> build_map(std::vector<Server>& servers)
+std::vector<Socket> build_sockets(void) // <- from JSON
 {
-	std::unordered_map<int, Server&> fd_map;
+	std::vector<Socket> sockets;
 
-	fd_map.insert({3, servers[0]});
+	sockets.push_back(Socket());
+	return (sockets);
+}
+
+std::unordered_map<int, Socket&> build_map(std::vector<Socket>& sockets)
+{
+	std::unordered_map<int, Socket&> fd_map;
+
+	fd_map.insert({3, sockets[0]});
 
 	return (fd_map);
 }
 
-std::vector<struct pollfd> get_descriptors(std::vector<Server>& servers)
+std::vector<struct pollfd> get_descriptors(std::vector<Socket>& sockets)
 {
 	std::vector<struct pollfd> fds;
 
