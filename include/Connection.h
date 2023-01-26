@@ -48,6 +48,7 @@ class Connection
 {
 	public:
 	Connection(int socket_fd, struct sockaddr address);
+	~Connection();
 
 	Request receive_request(void);
 	void send_response(Response& response);

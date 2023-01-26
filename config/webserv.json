@@ -1,0 +1,47 @@
+{
+	"servers": [
+		{
+			"listen": 4242,
+			"server_names": ["localhost", "example"],
+			"client_body_size": 1000,
+
+			"error_pages": {
+				"404": "404.html",
+				"403": "403.html",
+				"500": "500.html"
+			},
+
+			"locations": {
+				"/": {
+					"allowed_methods": ["GET"],
+					"root": "var/www/html",
+					"index": "index.html",
+					"auto_index": true
+				},
+				"/images": {
+					"redirect": "http://images.localhost:4242/"
+				}
+			}
+		},
+
+		{
+			"listen": 4242,
+			"server_names": ["images.localhost", "images.example"],
+
+			"error_pages": {
+				"404": "404.html",
+				"403": "403.html",
+				"500": "500.html"
+			},
+
+			"locations": {
+				"/": {
+					"client_body_size": 10000,
+					"allowed_methods": ["GET", "POST", "DELETE"],
+					"root": "var/www/html",
+					"CGI": ".php/Users/ngerrets/.brew/bin/php-cgi"
+				}
+			}
+		}
+	]
+}

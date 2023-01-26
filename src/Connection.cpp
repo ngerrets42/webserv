@@ -4,11 +4,14 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include <unistd.h>
 
 namespace webserv {
 
 // CONSTRUCTORS
 Connection::Connection(int socket_fd, struct sockaddr address) : socket_fd(socket_fd), address(address) {}
+
+Connection::~Connection() { close(socket_fd); }
 
 Connection::Connection() : socket_fd(-1) {}
 Connection::Connection(Connection const& other) { (void)other; }
