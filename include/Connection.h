@@ -1,48 +1,14 @@
 #ifndef CONNECTION_H
 # define CONNECTION_H
 
-# include <sys/socket.h>
-# include <string>
+# include "Core.h"
+
+# include "Request.h"
+# include "Response.h"
 
 namespace webserv {
 
 #define HTTP_HEADER_BUFFER_SIZE 8192
-
-enum RequestValidity
-{
-	VALID,
-	INVALID
-};
-
-enum RequestType
-{
-	GET,
-	POST,
-	DELETE
-};
-
-struct Request
-{
-	// is the request valid
-	RequestValidity validity;
-
-	// First line of request
-	RequestType type;
-	std::string path;
-	std::string http_version;
-	std::unordered_map<std::string, std::string> path_arguments;
-
-	//
-	std::string host;
-
-	Request();
-};
-
-struct Response
-{
-	size_t size;
-	char* data;
-};
 
 class Connection
 {
@@ -67,9 +33,6 @@ class Connection
 	int socket_fd;
 	struct sockaddr address;
 };
-
-
-void request_print(Request const& request);
 
 } // webserv
 

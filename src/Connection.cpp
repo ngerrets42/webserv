@@ -1,11 +1,5 @@
 #include "Connection.h"
 
-#include <sys/socket.h>
-#include <iostream>
-#include <sstream>
-#include <unordered_map>
-#include <unistd.h>
-
 namespace webserv {
 
 // CONSTRUCTORS
@@ -117,29 +111,6 @@ void Connection::send_response(Response& response)
 	{
 		std::cerr << "send() returned " << send_size << ", for Connection {" << socket_fd << '}' << std::endl;
 	}
-}
-
-// REQUEST
-Request::Request() : validity(INVALID) {}
-
-void request_print(Request const& request)
-{
-	std::cout << "REQUEST:\n";
-	if (request.validity == INVALID)
-	{
-		std::cout << "INVALID" << std::endl;
-		return ;
-	}
-	
-	if (request.type == GET) std::cout << "GET";
-	if (request.type == POST) std::cout << "POST";
-	if (request.type == DELETE) std::cout << "DELETE";
-
-	std::cout << ' ' << request.path << ' ' << request.http_version << '\n';
-
-	std::cout << "Host: " << request.host << '\n';
-
-	std::cout << std::endl;
 }
 
 } // webserv
