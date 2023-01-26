@@ -6,9 +6,15 @@ TARGET ?= webserv
 
 BUILD_DIR ?= ./build
 SRC_DIRS ?= ./src
-INC_DIRS ?= ./include
+INC_DIRS ?= ./include ./lib/njson/include
 CPPFLAGS ?= -Wall -Wextra -std=c++11
-LDFLAGS ?=
+LDFLAGS ?= 
+
+# -------------------        LIB        -------------------
+
+NJSON_DIR := ./lib/njson
+LDFLAGS += -L"./lib/njson" -lnjson
+INC_DIRS += $(LIB_DIR)/include
 
 # --------------------------- END -------------------------
 
@@ -18,8 +24,11 @@ OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CPPFLAGS += $(INC_FLAGS) -MMD -MP
 
-.PHONY: all
-all: $(TARGET)
+.PHONY: all lib
+all: lib $(TARGET)
+
+lib:
+	$(MAKE) -C $(NJSON_DIR)
 
 # linking
 $(TARGET): $(OBJS)
