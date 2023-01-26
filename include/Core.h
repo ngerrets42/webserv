@@ -8,9 +8,13 @@
 // Required C++-STD libraries:
 # include <sstream>
 # include <iostream>
+# include <vector>
 # include <unordered_map>
 
 namespace webserv {
+
+	typedef int sockfd_t;
+	typedef struct sockaddr sockaddr_t;
 
 } // webserv
 

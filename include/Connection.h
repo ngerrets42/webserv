@@ -13,7 +13,7 @@ namespace webserv {
 class Connection
 {
 	public:
-	Connection(int socket_fd, struct sockaddr address);
+	Connection(sockfd_t socket_fd, sockaddr_t address);
 	~Connection();
 
 	Request receive_request(void);
@@ -30,8 +30,8 @@ class Connection
 	public: Request build_request(std::string buffer);
 
 	private:
-	int socket_fd;
-	struct sockaddr address;
+	sockfd_t socket_fd;
+	sockaddr_t address;
 };
 
 } // webserv
