@@ -77,7 +77,7 @@ int main(void)
 
 	Connection test(3, sockaddr {});
 
-	Request r = test.build_request("GET / HTTP/1.1");
+	Request r = test.build_request("GET / HTTP/1.1\nHost: test.com");
 
 	request_print(r);
 

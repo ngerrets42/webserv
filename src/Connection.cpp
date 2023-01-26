@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 namespace webserv {
 
@@ -29,6 +30,37 @@ Request Connection::receive_request(void)
 	return (build_request(std::string{}));
 }
 
+// WARNING: Uses some pointer-magic
+static std::string* get_value_from_key(Request& request, std::string& key)
+{
+	static Request r_ref;
+	static std::unordered_map<std::string, std::string*> accepted_keys {
+		{ "Accept-Charset",			nullptr },
+		{ "Accept-Encoding",		nullptr },
+		{ "Accept-Language",		nullptr },
+		{ "Authorization",			nullptr },
+		{ "Expect",					nullptr },
+		{ "From",					nullptr },
+		{ "Host",					&r_ref.host },
+		{ "If-Match",				nullptr },
+		{ "If-Modified-Since",		nullptr },
+		{ "If-None-Match",			nullptr },
+		{ "If-Range",				nullptr },
+		{ "If-Unmodified-Since",	nullptr },
+		{ "Max-Forwards",			nullptr },
+		{ "Proxy-Authorization",	nullptr },
+		{ "Range",					nullptr },
+		{ "Referer",				nullptr },
+		{ "TE",						nullptr },
+		{ "User-Agent",				nullptr }
+	};
+
+	if (accepted_keys.find(key) == accepted_keys.end())
+		return (nullptr);
+	uintptr_t ptr = reinterpret_cast<uintptr_t>(accepted_keys.at(key)) - reinterpret_cast<uintptr_t>(&r_ref);
+	return (reinterpret_cast<std::string*>(ptr + reinterpret_cast<uintptr_t>(&request)));
+}
+
 Request Connection::build_request(std::string buffer)
 {
 	Request request;
@@ -37,6 +69,8 @@ Request Connection::build_request(std::string buffer)
 
 	std::stringstream buffer_stream(buffer);
 	std::string word;
+
+	// First line of REQUEST
 	buffer_stream >> word;
 	if (word == "GET")
 		request.type = GET;
@@ -56,6 +90,18 @@ Request Connection::build_request(std::string buffer)
 	while (!buffer_stream.eof())
 	{
 		buffer_stream >> word;
+		if (word.length() == 0)
+			continue ;
+		// remove last character from word (the ':')
+		word.erase(word.length() - 1);
+		std::string* value = get_value_from_key(request, word);
+		if (value == nullptr)
+		{
+			// Unknown key
+			continue ;
+		}
+		buffer_stream.get(); // skip the space
+		std::getline(buffer_stream, *value);
 	}
 	request.validity = VALID;
 	return (request);
@@ -75,7 +121,7 @@ Request::Request() : validity(INVALID) {}
 
 void request_print(Request const& request)
 {
-	std::cout << "REQUEST: ";
+	std::cout << "REQUEST:\n";
 	if (request.validity == INVALID)
 	{
 		std::cout << "INVALID" << std::endl;
@@ -86,7 +132,9 @@ void request_print(Request const& request)
 	if (request.type == POST) std::cout << "POST";
 	if (request.type == DELETE) std::cout << "DELETE";
 
-	std::cout << ' ' << request.path << ' ' << request.http_version;
+	std::cout << ' ' << request.path << ' ' << request.http_version << '\n';
+
+	std::cout << "Host: " << request.host << '\n';
 
 	std::cout << std::endl;
 }
