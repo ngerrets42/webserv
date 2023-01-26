@@ -106,10 +106,36 @@ Request Connection::build_request(std::string buffer)
 
 void Connection::send_response(Response& response)
 {
-	ssize_t send_size = send(socket_fd, response.data, response.size, 0);
-	if (send_size < 0)
+	std::ifstream file;
+	if (response.file_size > 0 && response.file_path.length() > 0)
 	{
-		std::cerr << "send() returned " << send_size << ", for Connection {" << socket_fd << '}' << std::endl;
+		file.open(response.file_path);
+		if (!file)
+		{
+			// something went wrong, send error 500?
+			return ;
+		}
+	}
+
+	//	Send the header
+	ssize_t send_size = send(socket_fd, response.header.data(), response.header.size(), 0);
+	if (send_size < 0)
+		std::cerr << "send(header) returned " << send_size << ", for Connection {" << socket_fd << '}' << std::endl;
+
+	if (!file)
+		return ;
+
+	static size_t const BUFFER_SIZE = 2048;
+	std::vector<char> buffer;
+	buffer.reserve(BUFFER_SIZE);
+
+	while (!file.eof())
+	{
+		file.read( reinterpret_cast<char*>(buffer.data()) , BUFFER_SIZE);
+
+		send_size = send(socket_fd, buffer.data(), static_cast<size_t>(file.gcount()), 0);
+		if (send_size < 0)
+			std::cerr << "send(file) returned " << send_size << ", for Connection {" << socket_fd << '}' << std::endl;
 	}
 }
 

@@ -7,8 +7,9 @@ namespace webserv {
 
 struct Response
 {
-	size_t size;
-	char* data;
+	std::string header;
+	std::string file_path;
+	size_t file_size;
 };
 
 } // webserv
