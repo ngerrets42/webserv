@@ -38,7 +38,7 @@
 				"/": {
 					"client_body_size": 10000,
 					"allowed_methods": ["GET", "POST", "DELETE"],
-					"root": "var/www/html",
+					"root": "var/www/upload",
 					"CGI_extention": ".php",
 					"CGI": "/Users/ngerrets/.brew/bin/php-cgi"
 				}

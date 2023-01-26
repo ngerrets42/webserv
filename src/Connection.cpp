@@ -3,7 +3,7 @@
 namespace webserv {
 
 // CONSTRUCTORS
-Connection::Connection(sockfd_t socket_fd, sockaddr_t address) : socket_fd(socket_fd), address(address) {}
+Connection::Connection(sockfd_t socket_fd, addr_t address) : socket_fd(socket_fd), address(address) {}
 
 Connection::~Connection() { close(socket_fd); }
 

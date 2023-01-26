@@ -13,7 +13,7 @@ namespace webserv {
 class Connection
 {
 	public:
-	Connection(sockfd_t socket_fd, sockaddr_t address);
+	Connection(sockfd_t socket_fd, addr_t address);
 	~Connection();
 
 	Request receive_request(void);
@@ -31,7 +31,7 @@ class Connection
 
 	private:
 	sockfd_t socket_fd;
-	sockaddr_t address;
+	addr_t address;
 };
 
 } // webserv
