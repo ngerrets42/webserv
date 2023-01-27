@@ -23,20 +23,22 @@ class Socket
 	Socket& operator=(Socket const& other);
 
 	public:
-	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket>& fd_map);
+	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
 
 	Response build_response(Request& request);
 
-	std::vector<Server> get_servers(void);
+	std::vector<Server*> get_servers(void);
+
+	sockfd_t get_socket_fd(void);
 
 	private:
-	void accept_connections(std::unordered_map<sockfd_t, Socket>& fd_map);
+	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
 
 	private:
 	sockfd_t socket_fd;
 	addr_in_t address;
 
-	std::vector<Server> servers;
+	std::vector<Server*> servers;
 	std::unordered_map<sockfd_t, Connection*> connection_map; // map of Connection socket fd - Connection class
 };
 

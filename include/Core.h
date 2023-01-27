@@ -6,6 +6,7 @@
 # include <unistd.h>
 # include <arpa/inet.h>
 # include <fcntl.h>
+# include <poll.h>
 
 // Required C++-STD libraries:
 # include <fstream>

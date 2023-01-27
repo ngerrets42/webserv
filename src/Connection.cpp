@@ -19,11 +19,16 @@ Request Connection::receive_request(void)
 	ssize_t recv_size = recv(socket_fd, buffer, HTTP_HEADER_BUFFER_SIZE, 0);
 	if (recv_size < 0)
 	{
-		std::cerr << "recv() returned " << recv_size << ". Can not read from Connection {" << socket_fd << "}"<< std::endl;
+		std::cerr << "recv() returned " << recv_size << " for Connection {" << socket_fd << "}: "
+			<< strerror(errno)
+			<< std::endl;
 	}
 
 	if (recv_size > 0)
+	{
+		buffer[recv_size] = '\0';
 		return build_request(std::string{ buffer });
+	}
 	return (build_request(std::string{}));
 }
 
@@ -91,7 +96,7 @@ Request Connection::build_request(std::string buffer)
 			continue ;
 		// remove last character from word (the ':')
 		word.erase(word.length() - 1);
-		std::string* value = get_value_from_key(request, word);
+		std::string* value = nullptr; //get_value_from_key(request, word); <- SEGFAULT
 		if (value == nullptr)
 		{
 			// Unknown key
@@ -125,10 +130,12 @@ void Connection::send_response(Response& response)
 	if (!file)
 		return ;
 
+	// Initialize a buffer to write to and read from
 	static size_t const BUFFER_SIZE = 2048;
 	std::vector<char> buffer;
 	buffer.reserve(BUFFER_SIZE);
 
+	// Send the entire file
 	while (!file.eof())
 	{
 		file.read( reinterpret_cast<char*>(buffer.data()) , BUFFER_SIZE);
