@@ -64,14 +64,14 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 
 	if (fd == socket_fd)
 	{
-		if (revents & POLL_ERR)
+		if (revents & POLLERR)
 		{
 			// error on socket??
-			throw (std::runtime_error(std::string("POLL_ERR {socket:" + std::to_string(socket_fd) + "}")));
+			throw (std::runtime_error(std::string("POLLERR {socket:" + std::to_string(socket_fd) + "}")));
 		}
-		else if (revents & POLL_IN)
+		else if (revents & POLLIN)
 		{
-			std::cout << "event POLL_IN, receiving new connections" << std::endl;
+			std::cout << "event POLLIN, receiving new connections" << std::endl;
 			accept_connections(fd_map);
 		}
 		return ;

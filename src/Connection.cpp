@@ -59,6 +59,8 @@ static std::string* get_value_from_key(Request& request, std::string& key)
 
 	if (accepted_keys.find(key) == accepted_keys.end())
 		return (nullptr);
+	if (accepted_keys.at(key) == nullptr)
+		return (nullptr);
 	uintptr_t ptr = reinterpret_cast<uintptr_t>(accepted_keys.at(key)) - reinterpret_cast<uintptr_t>(&r_ref);
 	return (reinterpret_cast<std::string*>(ptr + reinterpret_cast<uintptr_t>(&request)));
 }
@@ -96,7 +98,7 @@ Request Connection::build_request(std::string buffer)
 			continue ;
 		// remove last character from word (the ':')
 		word.erase(word.length() - 1);
-		std::string* value = nullptr; //get_value_from_key(request, word); <- SEGFAULT
+		std::string* value = get_value_from_key(request, word);
 		if (value == nullptr)
 		{
 			// Unknown key
