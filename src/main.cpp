@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 		if (amount < 0)
 		{
 			// error
-			std::cerr << "poll() < 0: " << strerror(errno) << std::endl;
+			std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
 		}
 
 		if (amount == 0)

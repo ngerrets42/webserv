@@ -20,7 +20,7 @@ Request Connection::receive_request(void)
 	if (recv_size < 0)
 	{
 		std::cerr << "recv() returned " << recv_size << " for Connection {" << socket_fd << "}: "
-			<< strerror(errno)
+			<< std::strerror(errno)
 			<< std::endl;
 	}
 

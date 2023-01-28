@@ -12,11 +12,11 @@ Socket::Socket(uint16_t port)
 	// Socket
 	socket_fd = socket(domain, type, protocol);
 	if (socket_fd < 0)
-		throw (std::runtime_error(strerror(errno)));
+		throw (std::runtime_error(std::strerror(errno)));
 
 	// Set non-blocking
 	if (fcntl(socket_fd, F_SETFL, O_NONBLOCK) < 0)
-		throw (std::runtime_error(strerror(errno)));
+		throw (std::runtime_error(std::strerror(errno)));
 
 	// Bind settings
 	address.sin_family = AF_INET;
@@ -29,7 +29,7 @@ Socket::Socket(uint16_t port)
 	if (bind(socket_fd, addr_ptr, sizeof(addr_t)) < 0)
 	{
 		close(socket_fd);
-		throw (std::runtime_error(strerror(errno)));
+		throw (std::runtime_error(std::strerror(errno)));
 	}
 
 	// Listen
@@ -37,7 +37,7 @@ Socket::Socket(uint16_t port)
 	if (listen(socket_fd, max_queue) < 0)
 	{
 		close(socket_fd);
-		throw (std::runtime_error(strerror(errno)));
+		throw (std::runtime_error(std::strerror(errno)));
 	}
 
 	// Info

@@ -7,13 +7,16 @@
 # include <arpa/inet.h>
 # include <fcntl.h>
 # include <poll.h>
+# include <string.h>
 
 // Required C++-STD libraries:
+# include <cstring>
 # include <fstream>
 # include <sstream>
 # include <iostream>
 # include <vector>
 # include <unordered_map>
+# include <bitset>
 
 namespace webserv {
 
