@@ -19,6 +19,7 @@ INC_DIRS += $(LIB_DIR)/include
 # --------------------------- END -------------------------
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp)
+HDRS := $(shell find $(INC_DIRS) -name *.h)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
@@ -37,7 +38,7 @@ $(TARGET): $(OBJS)
 	@echo "Done!"
 
 # compiling
-$(BUILD_DIR)/%.cpp.o: %.cpp
+$(BUILD_DIR)/%.cpp.o: %.cpp $(HDRS)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Compiling: " $<
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@

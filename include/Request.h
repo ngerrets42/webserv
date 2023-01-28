@@ -13,6 +13,7 @@ enum RequestValidity
 
 enum RequestType
 {
+	UNKNOWN,
 	GET,
 	POST,
 	DELETE
@@ -29,6 +30,8 @@ struct Request
 	std::string http_version;
 	std::unordered_map<std::string, std::string> path_arguments;
 
+	std::string content_length;
+
 	//
 	std::string host;
 
@@ -36,6 +39,8 @@ struct Request
 };
 
 void request_print(Request const& request);
+RequestType get_request_type(std::string const& word);
+char const* get_request_string(RequestType type);
 
 } // webserv
 

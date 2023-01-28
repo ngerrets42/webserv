@@ -25,10 +25,7 @@ Request Connection::receive_request(void)
 	}
 
 	if (recv_size > 0)
-	{
-		buffer[recv_size] = '\0';
-		return build_request(std::string{ buffer });
-	}
+		return build_request(std::string(buffer, recv_size));
 	return (build_request(std::string{}));
 }
 
@@ -76,43 +73,58 @@ Request Connection::build_request(std::string buffer)
 
 	// First line of REQUEST
 	buffer_stream >> word;
-	if (word == "GET")
-		request.type = GET;
-	else if (word == "POST")
-		request.type = POST;
-	else if (word == "DELETE")
-		request.type = DELETE;
-	else
-		return (request);
+	request.type = get_request_type(word);
+	if (request.type == UNKNOWN) return (request); // Unsupported request
 	
 	buffer_stream >> request.path;
 	if (request.path.length() == 0)
-		return (request);
+		return (request); // No path
 	
 	buffer_stream >> request.http_version;
+	if (request.http_version.length() == 0)
+		return (request); // No HTTP version
+	
+	std::getline(buffer_stream, word); // skip line
 
 	while (!buffer_stream.eof())
 	{
+		if (buffer_stream.peek() == '\r')
+			break ;
 		buffer_stream >> word;
 		if (word.length() == 0)
-			continue ;
+			break ;
 		// remove last character from word (the ':')
 		word.erase(word.length() - 1);
 		std::string* value = get_value_from_key(request, word);
 		if (value == nullptr)
 		{
 			// Unknown key
+			std::getline(buffer_stream, word);
 			continue ;
 		}
 		buffer_stream.get(); // skip the space
 		std::getline(buffer_stream, *value);
 	}
+
+	std::getline(buffer_stream, word);
+	stored_buffer.clear();
+	stored_buffer = buffer.substr(buffer_stream.tellg());
+	
+	// std::cout << "stored buffer: {" << stored_buffer << '}' << std::endl;
+
 	request.validity = VALID;
 	return (request);
 }
 
+// void Connection::build_request_get(Request& request, std::stringstream& buffer)
+// {
+
+// }
+
 void Connection::send_response(Response& response)
 {
+	std::cout << "file path: " << response.file_path << std::endl;
+
 	std::ifstream file;
 	if (response.file_size > 0 && response.file_path.length() > 0)
 	{
@@ -120,7 +132,7 @@ void Connection::send_response(Response& response)
 		if (!file)
 		{
 			// something went wrong, send error 500?
-			return ;
+			std::cerr << "can't open file." << std::endl;
 		}
 	}
 

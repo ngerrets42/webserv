@@ -34,6 +34,9 @@ class Socket
 	private:
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
 
+	void build_response_get(Request& request, Response& response);
+	void build_response_post(Request& request, Response& response);
+
 	private:
 	sockfd_t socket_fd;
 	addr_in_t address;

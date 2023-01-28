@@ -129,43 +129,47 @@ Response Socket::build_response(Request& request)
 {
 	Response response;
 
+	if (request.type == GET)
+		build_response_get(request, response);
+	else if (request.type == GET)
+		build_response_post(request, response);
+
+	return (response);
+}
+
+void Socket::build_response_get(Request& request, Response& response)
+{
 	std::string fpath;
 
-	if (request.path == "/")
+	fpath = "var/www/html" + request.path; // ROOT + REQUEST PATH
+
+	if (fpath == "var/www/html/")
+		fpath += "index.html";
+	
+	response.file_size = get_file_size(fpath);
+	if (response.file_size == 0)
 	{
-		// Get the file we are supposed to send back: (RN it's hardcoded)
-		fpath = "var/www/html/index.html";
-
-		response.file_size = get_file_size(fpath);
-		std::ifstream file(fpath);
-		if (!file)
-			throw (std::runtime_error("Bad file: " + fpath));
-
-		response.header = "HTTP/1.1 200 OK\r\n"
-			+ std::string {"Content-Length: "} + std::to_string(response.file_size) + "\r\n"
-			+ "Connection: Keep-Alive\r\n"
-			+ "Content-Type: text/html\r\n"
-			+ "\r\n";
+		// Error code 404
+		std::cerr << "FILE_SIZE == 0" << std::endl;
+		return ;
 	}
-	else if (request.path == "/favicon.ico")
-	{
-		// Get the file we are supposed to send back: (RN it's hardcoded)
-		fpath = "var/www/html/favicon.ico";
 
-		response.file_size = get_file_size(fpath);
-		std::ifstream file(fpath);
-		if (!file)
-			throw (std::runtime_error("Bad file: " + fpath));
-
-		response.header = "HTTP/1.1 200 OK\r\n"
-			+ std::string {"Content-Length: "} + std::to_string(response.file_size) + "\r\n"
-			+ "Content-Type: image/x-icon\r\n"
-			+ "\r\n";
-	}
+	std::ifstream file(fpath);
+	if (!file)
+		throw (std::runtime_error("Bad file: " + fpath));
 
 	response.file_path = fpath;
 
-	return (response);
+	response.header = "HTTP/1.1 200 OK\r\n"
+		+ std::string {"Content-Length: "} + std::to_string(response.file_size) + "\r\n"
+		+ "Connection: Keep-Alive\r\n"
+		+ "Content-Type: " + "text/html" + "\r\n"
+		+ "\r\n";
+}
+
+void Socket::build_response_post(Request& request, Response& response)
+{
+	
 }
 
 void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
@@ -178,13 +182,6 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 	{
 		std::cout << "new connection created, fd: " << connection_fd << std::endl;
 		Connection* c = new Connection(connection_fd, accepted_address);
-		// Request -> Response
-		// Request request = c->receive_request();
-		// if (request.validity == VALID)
-		// {
-		// 	Response response = build_response( request );
-		// 	c->send_response( response );
-		// }
 
 		// Add to connections AND to the fd_map for poll()
 		connection_map.emplace(connection_fd, c);
