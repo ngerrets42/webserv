@@ -25,17 +25,12 @@ class Socket
 	public:
 	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
 
-	Response build_response(Request& request);
-
 	std::vector<Server*> get_servers(void);
 
 	sockfd_t get_socket_fd(void);
 
 	private:
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
-
-	void build_response_get(Request& request, Response& response);
-	void build_response_post(Request& request, Response& response);
 
 	private:
 	sockfd_t socket_fd;

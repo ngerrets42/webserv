@@ -41,6 +41,7 @@ struct Request
 void request_print(Request const& request);
 RequestType get_request_type(std::string const& word);
 char const* get_request_string(RequestType type);
+Request request_build(std::vector<char>& buffer);
 
 } // webserv
 

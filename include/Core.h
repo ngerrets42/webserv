@@ -17,6 +17,7 @@
 # include <vector>
 # include <unordered_map>
 # include <bitset>
+# include <thread>
 
 namespace webserv {
 

@@ -1,5 +1,7 @@
 #include "Socket.h"
 
+# include "RequestHandler.h"
+
 namespace webserv {
 
 Socket::Socket(uint16_t port)
@@ -57,21 +59,19 @@ Socket& Socket::operator=(Socket const& other) { (void)other; return *this; }
 
 void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map)
 {
-	std::cout << "Notify on fd: " << fd
-		<< " for socket_fd: " << socket_fd
-		<< " event bitmask: " << std::bitset<8>(revents)
-		<< " ";
+	std::cout << "Notify {fd: " << fd << ", socket: " << socket_fd << "}, ";
 
 	if (fd == socket_fd)
 	{
 		if (revents & POLLERR)
 		{
 			// error on socket??
+			std::cout << "event: POLLERR" << std::endl;
 			throw (std::runtime_error(std::string("POLLERR {socket:" + std::to_string(socket_fd) + "}")));
 		}
 		else if (revents & POLLIN)
 		{
-			std::cout << "event POLLIN, receiving new connections" << std::endl;
+			std::cout << "event: POLLIN";
 			accept_connections(fd_map);
 		}
 		return ;
@@ -87,7 +87,7 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	if (revents & POLLERR)
 	{
 		// received ERR, destroy connection
-		std::cout << "event: POLLERR, disconnecting device" << std::endl;
+		std::cout << "event: POLLERR" << std::endl;
 		delete it->second;
 		connection_map.erase(it);
 		// update fd_map
@@ -96,7 +96,7 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	}
 	if (revents & POLLHUP)
 	{
-		std::cout << "event: POLLHUP, disconnecting device" << std::endl;
+		std::cout << "event: POLLHUP" << std::endl;
 		delete it->second;
 		connection_map.erase(it);
 		fd_map.erase(fd);
@@ -105,71 +105,9 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	else if (revents & POLLIN)
 	{
 		// A new REQUEST is coming in on this connection
-		Request request = it->second->receive_request();
-		std::cout << "event: POLLIN, receiving request " << request.path << std::endl;
-		if (request.validity == VALID)
-		{
-			Response response = build_response( request );
-			it->second->send_response( response );
-		}
+		std::cout << "event: POLLIN" << std::endl;
+		RequestHandler::async(this, it->second, it->first);
 	}
-}
-
-static size_t get_file_size(std::string const& fpath)
-{
-	std::ifstream getl(fpath, std::ifstream::ate | std::ifstream::binary);
-	if (!getl)
-		return (0);
-	size_t file_length = getl.tellg();
-	getl.close();
-	return (file_length);
-}
-
-Response Socket::build_response(Request& request)
-{
-	Response response;
-
-	if (request.type == GET)
-		build_response_get(request, response);
-	else if (request.type == GET)
-		build_response_post(request, response);
-
-	return (response);
-}
-
-void Socket::build_response_get(Request& request, Response& response)
-{
-	std::string fpath;
-
-	fpath = "var/www/html" + request.path; // ROOT + REQUEST PATH
-
-	if (fpath == "var/www/html/")
-		fpath += "index.html";
-	
-	response.file_size = get_file_size(fpath);
-	if (response.file_size == 0)
-	{
-		// Error code 404
-		std::cerr << "FILE_SIZE == 0" << std::endl;
-		return ;
-	}
-
-	std::ifstream file(fpath);
-	if (!file)
-		throw (std::runtime_error("Bad file: " + fpath));
-
-	response.file_path = fpath;
-
-	response.header = "HTTP/1.1 200 OK\r\n"
-		+ std::string {"Content-Length: "} + std::to_string(response.file_size) + "\r\n"
-		+ "Connection: Keep-Alive\r\n"
-		+ "Content-Type: " + "text/html" + "\r\n"
-		+ "\r\n";
-}
-
-void Socket::build_response_post(Request& request, Response& response)
-{
-	
 }
 
 void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
@@ -180,13 +118,14 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 	sockfd_t connection_fd = 0;
 	while ((connection_fd = accept(socket_fd, &accepted_address, &accepted_address_length)) > 0)
 	{
-		std::cout << "new connection created, fd: " << connection_fd << std::endl;
+		std::cout << ", accepted: " << connection_fd;
 		Connection* c = new Connection(connection_fd, accepted_address);
 
 		// Add to connections AND to the fd_map for poll()
 		connection_map.emplace(connection_fd, c);
 		fd_map.emplace(connection_fd, this);
 	}
+	std::cout << std::endl;
 }
 
 sockfd_t Socket::get_socket_fd(void) { return socket_fd; }
