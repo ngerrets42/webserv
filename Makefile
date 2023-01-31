@@ -14,7 +14,6 @@ LDFLAGS ?=
 
 NJSON_DIR := ./lib/njson
 LDFLAGS += -L"./lib/njson" -lnjson
-INC_DIRS += $(LIB_DIR)/include
 
 # --------------------------- END -------------------------
 
