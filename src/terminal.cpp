@@ -32,6 +32,8 @@ void Command::run_thread(void)
 			free(cptr);
 			continue;
 		}
+		else
+			cmd->run();
 		history.push_back(cptr);
 		add_history(cptr);
 	}
@@ -43,23 +45,8 @@ void Command::run_thread(void)
 
 char** Command::completion(const char * text , int start,  int end)
 {
-	std::vector<char*> matches;
-
-	std::string str(text);
-	Command* cmd = Command::find(str);
-
-	std::cout << "completion called" << std::endl;
-
-	if (cmd == nullptr)
-		return (NULL);
-
-	for (auto& pair : cmd->subcommands)
-	{
-		char* cpy = strdup(pair.first.c_str());
-		matches.push_back(cpy);
-	}
-	matches.push_back(NULL);
-	return (matches.data());
+	// NEEDS implementation
+	return (NULL);
 }
 
 void terminal_setup(void)
