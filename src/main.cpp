@@ -1,8 +1,9 @@
 #include "Connection.h"
 #include "Server.h"
 #include "Socket.h"
+#include "Command.h"
 
-#define TIMEOUT 10000
+#define TIMEOUT 1000
 
 using namespace webserv;
 
@@ -60,8 +61,29 @@ int main(int argc, char **argv)
 	std::vector<Server*> servers = build_servers();
 	std::vector<Socket*> sockets = build_sockets(argc, argv);
 	std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
+	bool run = true;
 
-	while (true)
+	Command::add_command(
+		Command("descriptors", [&]() {
+			std::cout << "Descriptors in map: ";
+			for (auto& pair : fd_map)
+			{
+				std::cout << pair.first << ", ";
+			}
+			std::cout << std::endl;
+		})
+	);
+
+	Command::add_command(
+		Command("exit", [&](){
+			std::cout << "Stopping server..." << std::endl;
+			run = false;
+		})
+	);
+
+	terminal_setup();
+
+	while (run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);
 
@@ -83,6 +105,8 @@ int main(int argc, char **argv)
 				fd_map[pfd.fd]->notify(pfd.fd, pfd.revents, fd_map);
 		}
 	}
+
+	std::cout << "Bye!" << std::endl;
 
 	return (EXIT_SUCCESS);
 }

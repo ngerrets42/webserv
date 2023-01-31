@@ -105,8 +105,12 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	else if (revents & POLLIN)
 	{
 		// A new REQUEST is coming in on this connection
-		std::cout << "event: POLLIN" << std::endl;
-		RequestHandler::async(this, it->second, it->first);
+		std::cout << "event: POLLIN";
+		if (it->second->busy)
+			std::cout << " - ignored because connection busy";
+		else
+			RequestHandler::async(this, it->second, it->first);
+		std::cout << std::endl;
 	}
 }
 

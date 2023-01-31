@@ -8,8 +8,12 @@ RequestHandler::RequestHandler() {}
 
 void RequestHandler::async(Socket* socket, Connection* connection, sockfd_t fd)
 {
+	if (connection->busy)
+		return ;
+	connection->busy = true;
 	std::thread handler_thread(RequestHandler::async_thread, socket, connection, fd);
 	handler_thread.detach();
+	connection->busy = false;
 }
 
 // Return a buffer of data that should contain the header of the request
@@ -123,10 +127,12 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 	if (buffer.size() <= 0)
 		return ; // Nothing to do
 	
-	Request request = request_build(buffer);
+	Request& request = connection->get_last_request();
+	request = request_build(buffer);
 	// request_print(request);
 
-	Response response = response_build(request, socket);
+	Response& response = connection->get_last_response();
+	response = response_build(request, socket);
 	send_response(response, fd);
 
 	return ;

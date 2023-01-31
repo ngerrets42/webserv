@@ -17,8 +17,8 @@ class Connection
 	Connection(sockfd_t socket_fd, addr_t address);
 	~Connection();
 
-	Request receive_request(void);
-	void send_response(Response& response);
+	Request& get_last_request(void);
+	Response& get_last_response(void);
 
 	private:
 	// unused constructors
@@ -38,7 +38,11 @@ class Connection
 	sockfd_t socket_fd;
 	addr_t address;
 
-	std::string stored_buffer;
+	Request last_request;
+	Response last_response;
+
+	public:
+	bool busy;
 };
 
 } // webserv
