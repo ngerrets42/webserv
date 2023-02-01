@@ -11,7 +11,7 @@ Command::Command(std::string const& cmd)
 	
 }
 
-Command::Command(std::string const& cmd, std::function<void()> func)
+Command::Command(std::string const& cmd, std::function<void(std::ostream&)> func)
 :	name(cmd),
 	func(func)
 {
@@ -61,9 +61,9 @@ Command* Command::find(std::string str)
 	return (nullptr);
 }
 
-void Command::run()
+void Command::run(std::ostream& out)
 {
-	func();
+	func(out);
 }
 
 } // webserv

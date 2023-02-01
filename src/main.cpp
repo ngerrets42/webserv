@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "Socket.h"
 #include "Command.h"
+#include "ShellSocket.h"
 
 #define TIMEOUT 1000
 
@@ -21,6 +22,7 @@ std::vector<Socket*> build_sockets(int argc, char **argv) // <- from Servers
 
 	for (int i = 1; i < argc; ++i)
 		sockets.push_back(new Socket(std::atoi(argv[i])));
+	sockets.push_back(new ShellSocket(6667));
 	return (sockets);
 }
 
@@ -66,19 +68,19 @@ int main(int argc, char **argv)
 	bool run = true;
 
 	Command::add_command(
-		Command("descriptors", [&]() {
-			std::cout << "Descriptors in map: ";
+		Command("descriptors", [&](std::ostream& out) {
+			out << "Descriptors in map: ";
 			for (auto& pair : fd_map)
 			{
-				std::cout << pair.first << ", ";
+				out << pair.first << ", ";
 			}
-			std::cout << std::endl;
+			out << std::endl;
 		})
 	);
 
 	Command::add_command(
-		Command("exit", [&](){
-			std::cout << "Stopping server..." << std::endl;
+		Command("exit", [&](std::ostream& out){
+			out << "Stopping server..." << std::endl;
 			run = false;
 		})
 	);

@@ -11,14 +11,14 @@ class Command
 {
 	public:
 	Command(std::string const& cmd);
-	Command(std::string const& cmd, std::function<void()> func);
+	Command(std::string const& cmd, std::function<void(std::ostream&)> func);
 	Command(Command&& cmd);
 
 	~Command();
 	Command& add_subcommand(Command scmd);
 
 	static Command* find(std::string str);
-	void run();
+	void run(std::ostream& out);
 
 	static void add_command(Command cmd);
 	static void run_thread(void);
@@ -34,7 +34,7 @@ class Command
 	private:
 	static std::unordered_map<std::string, Command> s_commands;
 
-	std::function<void()> func;
+	std::function<void(std::ostream&)> func;
 	std::unordered_map<std::string, Command> subcommands;
 };
 

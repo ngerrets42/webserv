@@ -16,7 +16,7 @@ void RequestHandler::async(Socket* socket, Connection* connection, sockfd_t fd)
 }
 
 // Return a buffer of data that should contain the header of the request
-static std::vector<char> receive(sockfd_t fd, size_t max_size)
+std::vector<char> receive(sockfd_t fd, size_t max_size)
 {
 	std::vector<char> buffer(max_size);
 

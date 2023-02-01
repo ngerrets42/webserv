@@ -25,6 +25,7 @@ class Socket
 	public:
 	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
 
+
 	// is the given fd active (NOT-busy), the Socket's fd is always active
 	bool is_active(sockfd_t fd) const;
 
@@ -32,10 +33,11 @@ class Socket
 
 	sockfd_t get_socket_fd(void);
 
-	private:
+	protected:
+	virtual void on_request(sockfd_t fd, Connection* connection);
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
 
-	private:
+	protected:
 	sockfd_t socket_fd;
 	addr_in_t address;
 

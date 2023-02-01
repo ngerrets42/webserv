@@ -103,15 +103,17 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		return ;
 	}
 	else if (revents & POLLIN)
-	{
-		// A new REQUEST is coming in on this connection
-		std::cout << "event: POLLIN";
-		if (it->second->busy)
-			std::cout << " - ignored because connection busy";
-		else
-			RequestHandler::async(this, it->second, it->first);
-		std::cout << std::endl;
-	}
+		this->on_request(it->first, it->second); // A new REQUEST is coming in on this connection
+}
+
+void Socket::on_request(sockfd_t fd, Connection* connection)
+{
+	std::cout << "event: POLLIN";
+	if (connection->busy)
+		std::cout << " - ignored because connection busy";
+	else
+		RequestHandler::async(this, connection, fd);
+	std::cout << std::endl;
 }
 
 bool Socket::is_active(sockfd_t fd) const
