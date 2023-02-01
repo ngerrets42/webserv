@@ -22,6 +22,10 @@ class ShellSocket : public Socket
 
 	protected:
 	virtual void on_request(sockfd_t fd, Connection* connection);
+
+	private:
+	std::set<sockfd_t> verified;
+	std::string password;
 	
 };
 
