@@ -13,7 +13,6 @@ void RequestHandler::async(Socket* socket, Connection* connection, sockfd_t fd)
 	connection->busy = true;
 	std::thread handler_thread(RequestHandler::async_thread, socket, connection, fd);
 	handler_thread.detach();
-	connection->busy = false;
 }
 
 // Return a buffer of data that should contain the header of the request
@@ -36,6 +35,8 @@ static std::vector<char> receive(sockfd_t fd, size_t max_size)
 		recv_size = 0;
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
+	if (recv_size < 0)
+		return (std::vector<char>());
 
 	if (static_cast<size_t>(recv_size) != max_size)
 		buffer.resize(recv_size);
@@ -125,7 +126,10 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 	std::vector<char> buffer = receive(fd, HTTP_HEADER_BUFFER_SIZE);
 
 	if (buffer.size() <= 0)
+	{
+		connection->busy = false;
 		return ; // Nothing to do
+	}
 	
 	Request& request = connection->get_last_request();
 	request = request_build(buffer);
@@ -135,6 +139,7 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 	response = response_build(request, socket);
 	send_response(response, fd);
 
+	connection->busy = false; // release connection
 	return ;
 }
 

@@ -40,6 +40,8 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 
 	for (auto& pair : fd_map)
 	{
+		if (!pair.second->is_active(pair.first)) // To make sure only relevant connections are polled (connections that are NOT busy)
+			continue ;
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
 		tmp.events = POLLHUP | POLLIN;

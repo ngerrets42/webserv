@@ -8,7 +8,7 @@ BUILD_DIR ?= ./build
 SRC_DIRS ?= ./src
 INC_DIRS ?= ./include ./lib/njson/include
 CPPFLAGS ?= -Wall -Wextra -g -fsanitize=address -std=c++11
-LDFLAGS ?= -L "/Users/${USER}/.brew/opt/readline/lib" -lreadline -g -fsanitize=address
+LDFLAGS ?= -fsanitize=address
 
 # -------------------        LIB        -------------------
 

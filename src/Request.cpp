@@ -82,6 +82,7 @@ Request request_build(std::vector<char>& buffer)
 		return (request);
 
 	// Create a string-stream from the data
+	buffer.push_back(0); // null-termination
 	std::stringstream buffer_stream(buffer.data());
 	std::string word;
 

@@ -114,6 +114,15 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	}
 }
 
+bool Socket::is_active(sockfd_t fd) const
+{
+	if (fd == socket_fd)
+		return (true);
+	if (connection_map.find(fd) == connection_map.end())
+		return (false);
+	return (!connection_map.at(fd)->busy);
+}
+
 void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 {
 	// new CONNECTIONs are coming in
