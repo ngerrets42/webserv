@@ -58,18 +58,31 @@ static Response response_build(Request& request, Socket* socket)
 	Response response;
 
 	std::string fpath;
-	fpath = "var/www/html" + request.path; // ROOT + REQUEST PATH
 
-	if (fpath == "var/www/html/")
-		fpath += "index.html";
+	if (request.path == "/")
+		request.path = "/index.html"; // HARDCODED FOR NOW
+
+	fpath = "var/www/html" + request.path; // ROOT + REQUEST PATH
 	
 	response.file_size = get_file_size(fpath);
 	if (response.file_size == 0)
 	{
 		// Error code 404
-		std::cerr << "FILE_SIZE == 0" << std::endl;
+		std::cerr << " response.file_size == 0; File probably not found.";
+		response.header = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
 		return response;
 	}
+
+	std::string ext = request.path.substr(request.path.find_last_of('.') + 1);
+	std::string content_type;
+	if (ext == "html")
+		content_type = "text/html";
+	else if (ext == "png")
+		content_type = "image/png";
+	else if (ext == "ico")
+		content_type = "image/x-icon";
+	else
+		content_type = "text/plain";
 
 	std::ifstream file(fpath);
 	if (!file)
@@ -80,7 +93,7 @@ static Response response_build(Request& request, Socket* socket)
 	response.header = "HTTP/1.1 200 OK\r\n"
 		+ std::string {"Content-Length: "} + std::to_string(response.file_size) + "\r\n"
 		+ "Connection: Keep-Alive\r\n"
-		+ "Content-Type: " + "text/html" + "\r\n"
+		+ "Content-Type: " + content_type + "\r\n"
 		+ "\r\n";
 	return (response);
 }
@@ -114,10 +127,30 @@ static void send_response(Response& response, sockfd_t fd)
 	while (!file.eof())
 	{
 		file.read( reinterpret_cast<char*>(buffer.data()) , buffer.size());
+		if (file.gcount() <= 0)
+			std::cerr << "file.read() gcount = " << file.gcount() << std::endl;
 
-		send_size = send(fd, buffer.data(), static_cast<size_t>(file.gcount()), 0);
-		if (send_size < 0)
-			std::cerr << "send(file) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
+		send_size = -1;
+		static const size_t MAX_ATTEMPTS = 100;
+		size_t attempts = 0;
+		while (send_size < 0)
+		{
+			send_size = send(fd, buffer.data(), static_cast<size_t>(file.gcount()), 0);
+			if (send_size < 0)
+			{
+				++attempts;
+				if (attempts >= MAX_ATTEMPTS)
+				{
+					std::cerr << "MAX_ATTEMPTS reached for Connection {" << fd << '}' << std::endl;
+					// close?
+					return ;
+				}
+				// std::cerr << "send(file) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
+				std::this_thread::sleep_for(std::chrono::milliseconds(100)); // sleep for a little bit then try again
+			}
+			else
+				attempts = 0; // reset attempts
+		}
 	}
 }
 
