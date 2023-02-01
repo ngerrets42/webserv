@@ -15,7 +15,7 @@ std::vector<Server*> build_servers(void) // <- from JSON
 	return (servers);
 }
 
-std::vector<Socket*> build_sockets(int argc, char **argv) // <- from JSON
+std::vector<Socket*> build_sockets(int argc, char **argv) // <- from Servers
 {
 	std::vector<Socket*> sockets;
 
