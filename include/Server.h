@@ -4,7 +4,7 @@
 #include "Core.h"
 #include <map>
 #include <utility>
-#include "njson.h"
+#include "njson/njson.h"
 
 // the location block enables us to handle several types of URIs/routes within a server block
 class Location{
@@ -37,7 +37,7 @@ class Location{
 class Server{
 	//the server block contains the the server configuration directives
 	public:
-		Server(Json::pointer json);
+		Server(njson::Json::pointer const &json);
 		~Server();
 	private:
 		int							_port; //port of the virtual server if no port has been set the default port should be 80
@@ -64,6 +64,6 @@ class Server{
 		// bool	contain_server_name(const std::string server_name) const;
 };
 
-std::vector<Server*> build_servers(Json* json); // This function loops through the Json creating a vector of servers and returning the vector.
+std::vector<Server*> build_servers(njson::Json::pointer &json); // This function loops through the Json creating a vector of servers and returning the vector.
 
 #endif

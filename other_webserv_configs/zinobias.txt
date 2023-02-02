@@ -1,0 +1,37 @@
+start_server:       
+    
+    client_body_size: 5000000;
+    listen: 8888 7777;
+    root: /Users/dkrecisz/var/www/html;
+
+    start_location:
+        location: *.php;
+        allowed_methods: GET 
+        POST 
+        DELETE;
+        CGIPath: /php-cgi-dustin;
+    end_location;
+
+    start_location:
+        location: /ttt;
+        CGIPath: php-cgi-dustin;
+    end_location;
+    
+    start_location:
+        location: /dir1/;
+        allowed_methods: DELETE;
+        auto_index: true;
+    end_location;
+    
+    start_location:
+        location: /dir2/;
+        default_file: hello.html;
+        auto_index: true;
+    end_location;
+    
+    start_location:
+        location: /dir3/;
+        redirection: /dir2/;
+    end_location;
+    
+end_server;

@@ -8,15 +8,6 @@ using namespace webserv;
 using namespace njson;
 
 
-std::vector<Socket*> build_sockets(int argc, char **argv) // <- from Servers
-{
-	std::vector<Socket*> sockets;
-
-	for (int i = 1; i < argc; ++i)
-		sockets.push_back(new Socket(std::atoi(argv[i])));
-	return (sockets);
-}
-
 std::unordered_map<sockfd_t, Socket*> build_map(std::vector<Socket*>& sockets)
 {
 	std::unordered_map<sockfd_t, Socket*> fd_map;
@@ -48,18 +39,28 @@ int main(int argc, char **argv)
 	if (argc < 2)
 	{
 		std::cout << "Please provide a .json configuration file as an arguement" << std::endl;
-		return (EXIT_SUCCESS);
+		return (EXIT_FAILURE);
 	}
-
-	std::vector<Server*> servers = build_servers();
-	std::vector<Socket*> sockets = build_sockets(argc, argv);
-	std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
-
-	while (true)
+	if (argc > 2)
 	{
 		std::cout << "Please provide only a .json configuration file as an arguement" << std::endl;
-		return (EXIT_SUCCESS);
+		return (EXIT_FAILURE);
 	}
+	JsonParser parser(argv[1]);
+	Json::pointer json = parser.parse();
+	if (parser.has_error())
+	{
+		std::cout << parser.get_error_msg() << std::endl;
+		return (EXIT_FAILURE);
+	}
+	if (!json)
+	{
+		std::cout << "Json Node was a nullptr" << std::endl;
+		return (EXIT_FAILURE);
+	}
+	std::vector<Server*> servers = build_servers(json);
+	// std::vector<Socket*> sockets = build_sockets(argc, argv);
+	// std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
 
 	return (EXIT_SUCCESS);
 }
