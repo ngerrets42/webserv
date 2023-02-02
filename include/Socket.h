@@ -25,7 +25,8 @@ class Socket
 	public:
 	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
 
-	Response build_response(Request& request);
+	// is the given fd active (NOT-busy), the Socket's fd is always active
+	bool is_active(sockfd_t fd) const;
 
 	std::vector<Server*> get_servers(void);
 
@@ -33,9 +34,6 @@ class Socket
 
 	private:
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
-
-	void build_response_get(Request& request, Response& response);
-	void build_response_post(Request& request, Response& response);
 
 	private:
 	sockfd_t socket_fd;

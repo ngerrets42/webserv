@@ -1,15 +1,14 @@
 #include "Connection.h"
 #include "Server.h"
 #include "Socket.h"
-#include "njson.h"
 
-#define TIMEOUT 10000 // milliseconds
+#define TIMEOUT 10000
 
 using namespace webserv;
 using namespace njson;
 
 
-std::vector<Socket*> build_sockets(int argc, char **argv) // <- from JSON
+std::vector<Socket*> build_sockets(int argc, char **argv) // <- from Servers
 {
 	std::vector<Socket*> sockets;
 
@@ -34,6 +33,8 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 
 	for (auto& pair : fd_map)
 	{
+		if (!pair.second->is_active(pair.first)) // To make sure only relevant connections are polled (connections that are NOT busy)
+			continue ;
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
 		tmp.events = POLLHUP | POLLIN;
@@ -49,39 +50,16 @@ int main(int argc, char **argv)
 		std::cout << "Please provide a .json configuration file as an arguement" << std::endl;
 		return (EXIT_SUCCESS);
 	}
-	if (argc > 2)
+
+	std::vector<Server*> servers = build_servers();
+	std::vector<Socket*> sockets = build_sockets(argc, argv);
+	std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
+
+	while (true)
 	{
 		std::cout << "Please provide only a .json configuration file as an arguement" << std::endl;
 		return (EXIT_SUCCESS);
 	}
-	Json json(argv[1]);
-
-	std::vector<Server*> servers = build_servers(&json);
-	// std::vector<Socket*> sockets = build_sockets(argc, argv);
-	// std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
-
-	// while (true)
-	// {
-	// 	std::vector<struct pollfd> fds = get_descriptors(fd_map);
-
-	// 	nfds_t data_size = static_cast<nfds_t>(fds.size());
-	// 	size_t amount = poll(fds.data(), data_size, TIMEOUT);
-
-	// 	if (amount < 0)
-	// 	{
-	// 		// error
-	// 		std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
-	// 	}
-
-	// 	if (amount == 0)
-	// 		continue ;
-
-	// 	for (struct pollfd& pfd : fds)
-	// 	{
-	// 		if (pfd.revents != 0)
-	// 			fd_map[pfd.fd]->notify(pfd.fd, pfd.revents, fd_map);
-	// 	}
-	// }
 
 	return (EXIT_SUCCESS);
 }

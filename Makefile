@@ -7,14 +7,13 @@ TARGET ?= webserv
 BUILD_DIR ?= ./build
 SRC_DIRS ?= ./src
 INC_DIRS ?= ./include ./lib/njson/include
-CPPFLAGS ?= -Wall -Wextra -std=c++11
-LDFLAGS ?= 
+CPPFLAGS ?= -Wall -Wextra -g -fsanitize=address -std=c++11
+LDFLAGS ?= -fsanitize=address
 
 # -------------------        LIB        -------------------
 
 NJSON_DIR := ./lib/njson
 LDFLAGS += -L"./lib/njson" -lnjson
-INC_DIRS += $(LIB_DIR)/include
 
 # --------------------------- END -------------------------
 
