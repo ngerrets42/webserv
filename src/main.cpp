@@ -8,13 +8,6 @@
 using namespace webserv;
 using namespace njson;
 
-std::vector<Server*> build_servers(void) // <- from JSON
-{
-	std::vector<Server*> servers;
-
-	servers.push_back(new Server());
-	return (servers);
-}
 
 std::vector<Socket*> build_sockets(int argc, char **argv) // <- from JSON
 {
@@ -63,7 +56,7 @@ int main(int argc, char **argv)
 	}
 	Json json(argv[1]);
 
-	std::vector<Server*> servers = build_servers(json);
+	std::vector<Server*> servers = build_servers(&json);
 	// std::vector<Socket*> sockets = build_sockets(argc, argv);
 	// std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
 
