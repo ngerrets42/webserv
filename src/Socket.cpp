@@ -20,6 +20,10 @@ Socket::Socket(uint16_t port)
 	if (fcntl(socket_fd, F_SETFL, O_NONBLOCK) < 0)
 		throw (std::runtime_error(std::strerror(errno)));
 
+//set the value of SO_REUSEADDR to true (1);
+	int optval = 1;
+	setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
 	// Bind settings
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
