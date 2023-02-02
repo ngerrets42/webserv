@@ -47,7 +47,7 @@ void ShellSocket::on_request(sockfd_t fd, Connection* connection)
 	if (cmd == nullptr)
 		response_buffer << "Command not found\n";
 	else
-		cmd->run(response_buffer);
+		cmd->run(response_buffer, as_str);
 	send(fd, response_buffer.str().c_str(), response_buffer.str().size() + 1, 0);
 }
 

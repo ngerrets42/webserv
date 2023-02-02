@@ -26,7 +26,7 @@ void Command::run_thread(void)
 			continue;
 		}
 		else
-			cmd->run(std::cout);
+			cmd->run(std::cout, str);
 	}
 }
 

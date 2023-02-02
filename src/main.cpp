@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	bool run = true;
 
 	Command::add_command(
-		Command("descriptors", [&](std::ostream& out) {
+		Command("descriptors", [&](std::ostream& out, std::string str) {
 			out << "Descriptors in map: ";
 			for (auto& pair : fd_map)
 			{
@@ -79,9 +79,15 @@ int main(int argc, char **argv)
 	);
 
 	Command::add_command(
-		Command("exit", [&](std::ostream& out){
+		Command("exit", [&](std::ostream& out, std::string str){
 			out << "Stopping server..." << std::endl;
 			run = false;
+		})
+	);
+
+	Command::add_command(
+		Command("echo", [](std::ostream& out, std::string str) {
+			out << str << std::endl;
 		})
 	);
 

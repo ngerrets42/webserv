@@ -10,20 +10,20 @@ namespace webserv {
 class Command
 {
 	public:
+	using function_t = std::function<void(std::ostream&, std::string)>;
+
 	Command(std::string const& cmd);
-	Command(std::string const& cmd, std::function<void(std::ostream&)> func);
+	Command(std::string const& cmd, function_t func);
 	Command(Command&& cmd);
 
 	~Command();
 	Command& add_subcommand(Command scmd);
 
-	static Command* find(std::string str);
-	void run(std::ostream& out);
+	static Command* find(std::string& str);
+	void run(std::ostream& out, std::string arguments);
 
 	static void add_command(Command cmd);
 	static void run_thread(void);
-
-	static char** completion(const char * text , int start,  int end);
 
 	private:
 	Command* find_impl(std::stringstream& line_stream);
@@ -34,7 +34,7 @@ class Command
 	private:
 	static std::unordered_map<std::string, Command> s_commands;
 
-	std::function<void(std::ostream&)> func;
+	function_t func;
 	std::unordered_map<std::string, Command> subcommands;
 };
 

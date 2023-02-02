@@ -56,7 +56,6 @@ Socket::Socket() : socket_fd(-1) {};
 Socket::Socket(Socket const& other) { (void)other; }
 Socket& Socket::operator=(Socket const& other) { (void)other; return *this; }
 
-
 void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map)
 {
 	std::cout << "Notify {fd: " << fd << ", socket: " << socket_fd << "}, ";

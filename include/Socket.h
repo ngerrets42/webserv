@@ -25,8 +25,13 @@ class Socket
 	public:
 	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
 
-
-	// is the given fd active (NOT-busy), the Socket's fd is always active
+	/**
+	 * @brief check if fd is busy.
+	 * 
+	 * @param fd one of the descriptors this Socket is responsible for.
+	 * @return true if ready for another task or the fiven fd is the Socket's own fd.
+	 * @return false if busy.
+	 */
 	bool is_active(sockfd_t fd) const;
 
 	std::vector<Server*> get_servers(void);

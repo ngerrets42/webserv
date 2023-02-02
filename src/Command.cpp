@@ -11,7 +11,7 @@ Command::Command(std::string const& cmd)
 	
 }
 
-Command::Command(std::string const& cmd, std::function<void(std::ostream&)> func)
+Command::Command(std::string const& cmd, Command::function_t func)
 :	name(cmd),
 	func(func)
 {
@@ -45,25 +45,31 @@ Command* Command::find_impl(std::stringstream& line_stream)
 		if (subcommands.find(key) != subcommands.end())
 			return subcommands.at(key).find_impl(line_stream);
 		else
-			return (nullptr);
+			return (this);
 	}
 	return (this);
 }
 
-Command* Command::find(std::string str)
+Command* Command::find(std::string& str)
 {
 	std::stringstream line_stream(str);
 	std::string key;
 
 	line_stream >> std::ws >> key;
 	if (s_commands.find(key) != s_commands.end())
-		return s_commands.at(key).find_impl(line_stream);
+	{
+		Command* cmd = s_commands.at(key).find_impl(line_stream);
+		if (cmd == nullptr)
+			return (nullptr);
+		str = str.substr(static_cast<size_t>(line_stream.tellg()) + 1);
+		return cmd;
+	}
 	return (nullptr);
 }
 
-void Command::run(std::ostream& out)
+void Command::run(std::ostream& out, std::string arguments)
 {
-	func(out);
+	func(out, arguments);
 }
 
 } // webserv
