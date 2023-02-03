@@ -53,6 +53,34 @@ static size_t get_file_size(std::string const& fpath)
 	return (file_length);
 }
 
+static std::string const& get_errorpage_desc(std::string code)
+{
+	static std::unordered_map<std::string, std::string> const desc_map = {
+		{"_", "UNKNOWN"},
+		{"404", "Not Found"}
+	};
+
+	if (desc_map.find(code) == desc_map.end())
+		return (desc_map.at("_"));
+	return (desc_map.at(code));
+}
+
+static Response errorpage(std::string code, Server& server, Location& location)
+{
+	Response response = {};
+
+	if (code.length() != 3)
+		throw (std::runtime_error("ERRORCODE needs to have 3 characters"));
+
+	// response.file_path = server.get_errorpage_path(code, location);
+	// response.file_size = get_file_size(response.file_path);
+
+	response.header = "HTTP/1.1 " + code + ' ' + get_errorpage_desc(code) + "\r\n";
+	response.header += "Content-Length: " + std::to_string(response.file_size) + "\r\n";
+	response.header += "\r\n";
+	return (response);
+}
+
 static Response response_build(Request& request, Socket* socket)
 {
 	Response response;
@@ -62,16 +90,17 @@ static Response response_build(Request& request, Socket* socket)
 	if (request.path == "/")
 		request.path = "/index.html"; // HARDCODED FOR NOW
 
-	fpath = "var/www/html" + request.path; // ROOT + REQUEST PATH
+	// Get Server based on host:
+	Server server = Server(); // TODO: Actually get server from host
+
+	// Get Location based on request path:
+	Location location = Location(); // TODO: Actually get location from path
+
+	fpath = "var/www/html" + request.path; // TODO: ROOT + REQUEST PATH
 	
 	response.file_size = get_file_size(fpath);
 	if (response.file_size == 0)
-	{
-		// Error code 404
-		std::cerr << " response.file_size == 0; File probably not found.";
-		response.header = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-		return response;
-	}
+		return errorpage("404", server, location);
 
 	std::string ext = request.path.substr(request.path.find_last_of('.') + 1);
 	std::string content_type;
@@ -86,7 +115,7 @@ static Response response_build(Request& request, Socket* socket)
 
 	std::ifstream file(fpath);
 	if (!file)
-		throw (std::runtime_error("Bad file: " + fpath));
+		return errorpage("404", server, location);
 
 	response.file_path = fpath;
 
