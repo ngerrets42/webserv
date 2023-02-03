@@ -85,6 +85,13 @@ static Response response_build(Request& request, Socket* socket)
 {
 	Response response;
 
+	if (request.validity == INVALID)
+	{
+		Server server = Server();
+		Location location = Location();
+		return (errorpage("400", server, location));
+	}
+
 	std::string fpath;
 
 	if (request.path == "/")
@@ -183,6 +190,25 @@ static void send_response(Response& response, sockfd_t fd)
 	}
 }
 
+void receive_post(sockfd_t fd, Request& request, std::vector<char>& buffer)
+{
+	std::string file_path = request.path;
+	size_t recv_data = buffer.size();
+
+	std::cout << "receive_post() fpath: " << file_path << std::endl;
+	std::string root = "var/www/upload";
+	std::ofstream file(root + file_path);
+	if (!file)
+		throw(std::runtime_error("Can't open file for writing"));
+	
+	while (buffer.size() > 0)
+	{
+		file.write(buffer.data(), buffer.size());
+		static size_t MAX_POST_RECV_SIZE = 2042;
+		buffer = receive(fd, MAX_POST_RECV_SIZE);
+	}
+}
+
 void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd_t fd)
 {
 	std::vector<char> buffer = receive(fd, HTTP_HEADER_BUFFER_SIZE);
@@ -199,8 +225,11 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 
 	Response& response = connection->get_last_response();
 	response = response_build(request, socket);
-	send_response(response, fd);
 
+	if (request.type == POST && request.validity == VALID)
+		receive_post(fd, request, buffer);
+
+	send_response(response, fd);
 	connection->busy = false; // release connection
 	return ;
 }
