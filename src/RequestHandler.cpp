@@ -185,12 +185,14 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 {
 	std::vector<char> buffer = socket->receive(fd, HTTP_HEADER_BUFFER_SIZE);
 
+	if (socket->get_connection(fd) == nullptr)
+		return ;
 	if (buffer.size() <= 0)
 	{
 		connection->busy = false;
 		return ; // Nothing to do
 	}
-	
+
 	Request& request = connection->get_last_request();
 	request = request_build(buffer);
 	// request_print(request);
