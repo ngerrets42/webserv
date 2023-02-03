@@ -25,7 +25,7 @@ std::vector<char> receive(sockfd_t fd, size_t max_size)
 	while (attempts)
 	{
 		recv_size = recv(fd, buffer.data(), max_size, 0);
-		close(0);
+		close(fd);
 		if (recv_size > 0)
 			break ;
 
