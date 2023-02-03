@@ -22,7 +22,7 @@ std::vector<Socket*> build_sockets(int argc, char **argv) // <- from Servers
 
 	for (int i = 1; i < argc; ++i)
 		sockets.push_back(new Socket(std::atoi(argv[i])));
-	sockets.push_back(new ShellSocket(6667));
+	sockets.push_back(new ShellSocket(6666));
 	return (sockets);
 }
 
