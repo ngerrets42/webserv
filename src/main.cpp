@@ -91,6 +91,51 @@ int main(int argc, char **argv)
 		})
 	);
 
+	Command* cmd = new Command("socket");
+	cmd->add_subcommand(new Command("status", [&](std::ostream& out, std::string str) {
+			sockfd_t fd = -1;
+			std::stringstream stream(str);
+			stream >> fd;
+			if (fd <= 0 || fd_map.find(fd) == fd_map.end())
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			Socket const* socket = fd_map.at(fd);
+
+			out << "Socket " << fd << '\n';
+			out << " Port: " << socket->get_port() << std::endl;
+		}));
+	Command::add_command(cmd);
+
+	cmd = new Command("connection");
+	cmd->add_subcommand(new Command("status", [&](std::ostream& out, std::string str) {
+			sockfd_t fd;
+			std::stringstream stream(str);
+			stream >> fd;
+			std::cout << fd << std::endl;
+			if (fd <= 0 || fd_map.find(fd) == fd_map.end())
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			Socket const* socket = fd_map.at(fd);
+			Connection const* connection = socket->get_connection(fd);
+			if (!connection)
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			out << "Connection " << fd << '\n';
+			out << " Parent Socket: " << socket->get_socket_fd() << '\n';
+			out << " Busy: " << std::boolalpha << connection->busy << '\n';
+			out << " IP: " << connection->get_ip() << std::endl;
+		}));
+	Command::add_command(cmd);
+
 	terminal_setup();
 
 	while (run)

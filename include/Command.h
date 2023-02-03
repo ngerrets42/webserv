@@ -27,7 +27,7 @@ class Command
 	static void run_thread(void);
 
 	private:
-	Command* find_impl(std::stringstream& line_stream);
+	Command* find_impl(std::stringstream& line_stream, std::stringstream& cons_stream);
 
 	public:
 	std::string name;

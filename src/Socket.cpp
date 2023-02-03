@@ -4,7 +4,7 @@
 
 namespace webserv {
 
-Socket::Socket(uint16_t port)
+Socket::Socket(uint16_t _port) : port(_port)
 {
 	// Settings
 	const int domain = AF_INET;
@@ -53,7 +53,12 @@ Socket::Socket(uint16_t port)
 		<< std::endl;
 }
 
-Socket::~Socket() { close(socket_fd); }
+Socket::~Socket()
+{
+	for (auto& pair : connection_map)
+		delete pair.second;
+	close(socket_fd);
+}
 
 // Unavailable constructors
 Socket::Socket() : socket_fd(-1) {};
@@ -119,6 +124,19 @@ void Socket::on_request(sockfd_t fd, Connection* connection)
 	std::cout << std::endl;
 }
 
+Connection const* Socket::get_connection(sockfd_t fd) const
+{
+	auto it = connection_map.find(fd);
+	if (it == connection_map.end())
+		return (nullptr);
+	return (it->second);
+}
+
+uint16_t Socket::get_port(void) const
+{
+	return port;
+}
+
 bool Socket::is_active(sockfd_t fd) const
 {
 	if (fd == socket_fd)
@@ -146,7 +164,7 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 	std::cout << std::endl;
 }
 
-sockfd_t Socket::get_socket_fd(void) { return socket_fd; }
+sockfd_t Socket::get_socket_fd(void) const { return socket_fd; }
 
 
 } // webserv

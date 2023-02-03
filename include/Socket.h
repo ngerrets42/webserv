@@ -12,9 +12,9 @@ class Socket
 {
 	public:
 	// Constructors
-	Socket(uint16_t port);
+	Socket(uint16_t _port);
 
-	~Socket();
+	virtual ~Socket();
 
 	private:
 	// Private Constructors
@@ -24,6 +24,10 @@ class Socket
 
 	public:
 	void notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map);
+
+	Connection const* get_connection(sockfd_t fd) const;
+
+	uint16_t get_port(void) const;
 
 	/**
 	 * @brief check if fd is busy.
@@ -36,13 +40,14 @@ class Socket
 
 	std::vector<Server*> get_servers(void);
 
-	sockfd_t get_socket_fd(void);
+	sockfd_t get_socket_fd(void) const;
 
 	protected:
 	virtual void on_request(sockfd_t fd, Connection* connection);
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
 
 	protected:
+	uint16_t port;
 	sockfd_t socket_fd;
 	addr_in_t address;
 

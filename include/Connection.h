@@ -20,6 +20,8 @@ class Connection
 	Request& get_last_request(void);
 	Response& get_last_response(void);
 
+	std::string get_ip(void) const;
+
 	private:
 	// unused constructors
 	Connection();
