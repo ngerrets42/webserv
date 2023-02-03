@@ -29,6 +29,8 @@ class Socket
 
 	uint16_t get_port(void) const;
 
+	std::vector<char> receive(sockfd_t fd, size_t max_size);
+
 	/**
 	 * @brief check if fd is busy.
 	 * 

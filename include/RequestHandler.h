@@ -25,8 +25,6 @@ class RequestHandler
 	static RequestHandler s_request_handler;
 };
 
-std::vector<char> receive(sockfd_t fd, size_t max_size);
-
 } // webserv
 
 #endif // REQUEST_HANDLER_H

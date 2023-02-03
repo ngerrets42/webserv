@@ -88,8 +88,9 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	auto it = connection_map.find(fd);
 	if (it == connection_map.end())
 	{
-		// unknown fd, shouldn't happen
-		throw (std::runtime_error(std::string("sockfd not in connection_map {socket:" + std::to_string(socket_fd) + "}")));
+		// unknown fd
+		fd_map.erase(fd);
+		// throw (std::runtime_error(std::string("sockfd not in connection_map {socket:" + std::to_string(socket_fd) + "}")));
 	}
 
 	if (revents & POLLERR)
@@ -162,6 +163,41 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 		fd_map.emplace(connection_fd, this);
 	}
 	std::cout << std::endl;
+}
+
+// Return a buffer of data that should contain the header of the request
+std::vector<char> Socket::receive(sockfd_t fd, size_t max_size)
+{
+	std::vector<char> buffer(max_size);
+
+	size_t attempts = 10;
+	ssize_t recv_size = 0;
+	while (attempts)
+	{
+		recv_size = recv(fd, buffer.data(), max_size, 0);
+
+		if (recv_size == 0)
+		{
+			delete connection_map[fd];
+			connection_map.erase(fd);
+			return (std::vector<char>());
+		}
+
+		if (recv_size > 0)
+			break ;
+		std::cerr << "recv() returned " << recv_size << " for {fd: " << fd
+			<< "}, attempts remaining: " << attempts
+			<< std::endl;
+		--attempts;
+		recv_size = 0;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+	if (recv_size < 0)
+		return (std::vector<char>());
+
+	if (static_cast<size_t>(recv_size) != max_size)
+		buffer.resize(recv_size);
+	return buffer;
 }
 
 sockfd_t Socket::get_socket_fd(void) const { return socket_fd; }

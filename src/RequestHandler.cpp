@@ -15,35 +15,6 @@ void RequestHandler::async(Socket* socket, Connection* connection, sockfd_t fd)
 	handler_thread.detach();
 }
 
-// Return a buffer of data that should contain the header of the request
-std::vector<char> receive(sockfd_t fd, size_t max_size)
-{
-	std::vector<char> buffer(max_size);
-
-	size_t attempts = 10;
-	ssize_t recv_size = 0;
-	while (attempts)
-	{
-		recv_size = recv(fd, buffer.data(), max_size, 0);
-		close(fd);
-		if (recv_size > 0)
-			break ;
-
-		std::cerr << "recv() returned " << recv_size << " for {fd: " << fd
-			<< "}, attempts remaining: " << attempts
-			<< std::endl;
-		--attempts;
-		recv_size = 0;
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
-	if (recv_size < 0)
-		return (std::vector<char>());
-
-	if (static_cast<size_t>(recv_size) != max_size)
-		buffer.resize(recv_size);
-	return buffer;
-}
-
 static size_t get_file_size(std::string const& fpath)
 {
 	std::ifstream getl(fpath, std::ifstream::ate | std::ifstream::binary);
@@ -191,7 +162,7 @@ static void send_response(Response& response, sockfd_t fd)
 	}
 }
 
-void receive_post(sockfd_t fd, Request& request, std::vector<char>& buffer)
+void receive_post(sockfd_t fd, Socket* socket, Request& request, std::vector<char>& buffer)
 {
 	std::string file_path = request.path;
 	size_t recv_data = buffer.size();
@@ -206,13 +177,13 @@ void receive_post(sockfd_t fd, Request& request, std::vector<char>& buffer)
 	{
 		file.write(buffer.data(), buffer.size());
 		static size_t MAX_POST_RECV_SIZE = 2042;
-		buffer = receive(fd, MAX_POST_RECV_SIZE);
+		buffer = socket->receive(fd, MAX_POST_RECV_SIZE);
 	}
 }
 
 void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd_t fd)
 {
-	std::vector<char> buffer = receive(fd, HTTP_HEADER_BUFFER_SIZE);
+	std::vector<char> buffer = socket->receive(fd, HTTP_HEADER_BUFFER_SIZE);
 
 	if (buffer.size() <= 0)
 	{
@@ -228,7 +199,7 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 	response = response_build(request, socket);
 
 	if (request.type == POST && request.validity == VALID)
-		receive_post(fd, request, buffer);
+		receive_post(fd, socket, request, buffer);
 
 	send_response(response, fd);
 	connection->busy = false; // release connection
