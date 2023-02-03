@@ -2,7 +2,7 @@
 
 namespace webserv {
 
-std::unordered_map<std::string, Command> Command::s_commands;
+std::unordered_map<std::string, Command::pointer> Command::s_commands;
 
 Command::Command(std::string const& cmd)
 :	name(cmd),
@@ -24,15 +24,15 @@ Command::Command(Command&& cmd)
 
 Command::~Command() {}
 
-Command& Command::add_subcommand(Command scmd)
+Command& Command::add_subcommand(Command* scmd)
 {
-	subcommands.emplace(scmd.name, std::move(scmd));
+	subcommands.emplace(scmd->name, pointer (scmd));
 	return (*this);
 }
 
-void Command::add_command(Command cmd)
+void Command::add_command(Command* cmd)
 {
-	s_commands.emplace(cmd.name, std::move(cmd));
+	s_commands.emplace(cmd->name, pointer (cmd));
 }
 
 Command* Command::find_impl(std::stringstream& line_stream)
@@ -46,7 +46,7 @@ Command* Command::find_impl(std::stringstream& line_stream)
 	if (key.length() > 0)
 	{
 		if (subcommands.find(key) != subcommands.end())
-			return subcommands.at(key).find_impl(line_stream);
+			return subcommands.at(key)->find_impl(line_stream);
 		line_stream.seekg(static_cast<size_t>(line_stream.tellg()) - key.length() - 1);
 		std::cout << "find_impl() - tellg: " << line_stream.tellg() << std::endl;
 	}
@@ -61,12 +61,13 @@ Command* Command::find(std::string& str)
 	line_stream >> std::ws >> key;
 	if (s_commands.find(key) != s_commands.end())
 	{
-		Command* cmd = s_commands.at(key).find_impl(line_stream);
-		if (line_stream.tellg() == -1)
+		Command* cmd = s_commands.at(key)->find_impl(line_stream);
+		if (line_stream.eof())
+			str.clear();
+		else if (line_stream.tellg() == -1)
 			str = str.substr(key.length() + 1);
 		else
 			str = str.substr(static_cast<size_t>(line_stream.tellg()) + 1);
-			
 		return cmd;
 	}
 	return (nullptr);
