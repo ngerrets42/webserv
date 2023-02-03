@@ -15,7 +15,6 @@ ShellSocket::~ShellSocket() { close(socket_fd); }
 void ShellSocket::on_request(sockfd_t fd, Connection* connection)
 {
 	std::cout << "ShellSocket-event: POLLIN";
-	std::cout << std::endl;
 	
 	static size_t const SIZE = 256;
 	std::vector<char> buffer = receive(fd, SIZE);
@@ -27,10 +26,10 @@ void ShellSocket::on_request(sockfd_t fd, Connection* connection)
 
 	std::string as_str = std::string(buffer.data());
 
-	std::cout << " > Received CMD: " << as_str << std::endl;
-
+	std::cout << ", CMD: \"" << as_str << '\"' << std::endl;
 	std::stringstream response_buffer;
-	if (verified.count(fd) == 0)
+	static bool const REQUIRE_PW = false;
+	if (verified.count(fd) == 0 && REQUIRE_PW)
 	{
 		// attempt verification
 		if (as_str == password)
@@ -43,11 +42,15 @@ void ShellSocket::on_request(sockfd_t fd, Connection* connection)
 		send(fd, response_buffer.str().c_str(), response_buffer.str().size() + 1, 0);
 		return ;
 	}
-	Command* cmd = Command::find(as_str);
-	if (cmd == nullptr)
-		response_buffer << "Command not found\n";
-	else
-		cmd->run(response_buffer, as_str);
+	if (as_str.length() > 0)
+	{
+		Command* cmd = Command::find(as_str);
+		if (cmd == nullptr)
+			response_buffer << "Command not found\n";
+		else
+			cmd->run(response_buffer, as_str);
+	}
+	response_buffer << "> ";
 	send(fd, response_buffer.str().c_str(), response_buffer.str().size() + 1, 0);
 }
 

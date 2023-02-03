@@ -39,16 +39,12 @@ Command* Command::find_impl(std::stringstream& line_stream)
 {
 	std::string key;
 
-	std::cout << "find_impl() - tellg before: " << line_stream.tellg() << std::endl;
 	line_stream >> std::ws >> key;
-
-	std::cout << "find_impl() key: " << key << std::endl;
 	if (key.length() > 0)
 	{
 		if (subcommands.find(key) != subcommands.end())
 			return subcommands.at(key)->find_impl(line_stream);
 		line_stream.seekg(static_cast<size_t>(line_stream.tellg()) - key.length() - 1);
-		std::cout << "find_impl() - tellg: " << line_stream.tellg() << std::endl;
 	}
 	return (this);
 }
