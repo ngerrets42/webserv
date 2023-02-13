@@ -45,7 +45,8 @@ class Socket
 	sockfd_t get_socket_fd(void) const;
 
 	protected:
-	virtual void on_request(sockfd_t fd, Connection* connection);
+	virtual void on_pollin(sockfd_t fd, Connection* connection);
+	virtual void on_pollout(sockfd_t fd, Connection* connection);
 	void accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map);
 
 	protected:

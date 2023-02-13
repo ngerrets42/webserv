@@ -15,8 +15,9 @@ class Connection
 	public:
 	enum State
 	{
-		IDLE = 0,
+		READY_TO_READ = 0,
 		READING,
+		READY_TO_WRITE,
 		WRITING,
 		CLOSE
 	};
@@ -29,6 +30,8 @@ class Connection
 	Response const& get_last_response(void) const;
 
 	std::string get_ip(void) const;
+
+	State get_state(void) const;
 
 	void on_pollin(void);
 	void on_pollout(void);
@@ -44,6 +47,7 @@ class Connection
 	private:
 
 	void new_request(void);
+	void continue_request(void);
 
 	void new_response(void);
 	void continue_response(void);
@@ -65,6 +69,7 @@ class Connection
 	struct HandlerData
 	{
 		Request current_request;
+		Response current_response;
 		std::vector<char> buffer;
 		std::ifstream file;
 	} handler_data;

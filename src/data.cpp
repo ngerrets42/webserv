@@ -23,6 +23,60 @@ namespace data
 			buffer.resize(recv_size);
 		return buffer;
 	}
+
+	ssize_t send(sockfd_t fd, std::vector<char> const& buffer)
+	{
+		if (buffer.size() <= 0)
+			return 0;
+
+		ssize_t send_size = ::send(fd, buffer.data(), buffer.size(), 0);
+		if (send_size < 0)
+			std::cerr << "send(header) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
+
+		return (send_size);
+	}
+
+	ssize_t send(sockfd_t fd, std::string const& str)
+	{
+		if (str.size() <= 0)
+			return 0;
+
+		ssize_t send_size = ::send(fd, str.data(), str.size(), 0);
+		if (send_size < 0)
+			std::cerr << "send(header) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
+		return (send_size);
+	}
+
+	// Send a chunk of a file (ifstream)
+	bool send_file(sockfd_t fd, std::ifstream& istream, size_t buffer_size)
+	{
+		if (!istream || istream.eof())
+			return (false); // No more file left to conquer
+
+		std::vector<char> buffer(buffer_size);
+		istream.read( reinterpret_cast<char*>(buffer.data()) , buffer.size());
+
+		if (istream.gcount() <= 0)
+		{
+			std::cerr << "istream.read() gcount = " << istream.gcount() << std::endl;
+			return (false);
+		}
+		buffer.resize(istream.gcount());
+		ssize_t send_size = send(fd, buffer);
+		if (send_size < 0 || static_cast<size_t>(send_size) != buffer.size())
+			std::cout << "send_size != buffer.size()" << std::endl;
+		return (!istream.eof());
+	}
+
+	size_t get_file_size(std::string const& fpath)
+	{
+		std::ifstream getl(fpath, std::ifstream::ate | std::ifstream::binary);
+		if (!getl)
+			return (0);
+		size_t file_length = getl.tellg();
+		getl.close();
+		return (file_length);
+	}
 } // data
 
 } // webserv

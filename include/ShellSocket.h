@@ -21,7 +21,7 @@ class ShellSocket : public Socket
 	// ShellSocket& operator=(ShellSocket const& other);
 
 	protected:
-	virtual void on_request(sockfd_t fd, Connection* connection);
+	virtual void on_pollin(sockfd_t fd, Connection* connection);
 
 	private:
 	std::set<sockfd_t> verified;

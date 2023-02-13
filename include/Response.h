@@ -31,6 +31,7 @@ class Response{
 		void	set_default_values(void);
 		bool	set_status_code(std::string response_code);
 		std::string get_response(void);
+		std::string get_response_const(void) const;
 
 };
 

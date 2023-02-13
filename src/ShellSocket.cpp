@@ -13,7 +13,7 @@ ShellSocket::~ShellSocket() { close(socket_fd); }
 // ShellSocket::ShellSocket(ShellSocket const& other) { (void)other; }
 // ShellSocket& ShellSocket::operator=(ShellSocket const& other) { (void)other; return *this; }
 
-void ShellSocket::on_request(sockfd_t fd, Connection* connection)
+void ShellSocket::on_pollin(sockfd_t fd, Connection* connection)
 {
 	std::cout << "ShellSocket-event: POLLIN";
 	

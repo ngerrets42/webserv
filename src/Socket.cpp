@@ -112,15 +112,22 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		return ;
 	}
 	else if (revents & POLLIN)
-		this->on_request(it->first, it->second); // A new REQUEST is coming in on this connection
+		on_pollin(it->first, it->second); // A new REQUEST is coming in on this connection
 	else if (revents & POLLOUT)
-		it->second->on_pollout();
+		on_pollout(it->first, it->second);
 }
 
-void Socket::on_request(sockfd_t fd, Connection* connection)
+void Socket::on_pollin(sockfd_t fd, Connection* connection)
 {
 	std::cout << "event: POLLIN";
 	connection->on_pollin();
+	std::cout << std::endl;
+}
+
+void Socket::on_pollout(sockfd_t fd, Connection* connection)
+{
+	std::cout << "event: POLLOUT";
+	connection->on_pollout();
 	std::cout << std::endl;
 }
 

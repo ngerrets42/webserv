@@ -10,7 +10,7 @@ Connection::Connection(sockfd_t connection_fd, addr_t address)
 	address(address),
 	last_request(),
 	last_response(),
-	state(IDLE),
+	state(READY_TO_READ),
 	busy(false) {}
 
 Connection::~Connection() { close(socket_fd); }
@@ -23,6 +23,8 @@ Connection& Connection::operator=(Connection const& other) { (void)other; return
 Request const& Connection::get_last_request(void) const { return last_request; }
 Response const& Connection::get_last_response(void) const { return last_response; }
 
+Connection::State Connection::get_state(void) const { return state; }
+
 std::string Connection::get_ip(void) const
 {
 	char* cstr = inet_ntoa(reinterpret_cast<addr_in_t const*>(&address)->sin_addr);
@@ -33,19 +35,23 @@ std::string Connection::get_ip(void) const
 void Connection::on_pollin(void)
 {
 	// Receive request OR continue receiving in case of POST
-	if (state != READING)
-		new_request();
-	else
-		return ; // Continue reading POST
+	switch (state)
+	{
+		case READY_TO_READ: new_request(); break;
+		case READING: continue_request(); break;
+		default: return;	
+	}	
 }
 
 void Connection::on_pollout(void)
 {
 	// Send response OR continue sending response
-	if (state != WRITING)
-		new_response();
-	else
-		continue_response();
+	switch (state)
+	{
+		case READY_TO_WRITE: new_response(); break;
+		case WRITING: continue_response(); break;
+		default: return;
+	}
 }
 
 void Connection::new_request(void)
@@ -56,20 +62,47 @@ void Connection::new_request(void)
 		this->state = CLOSE;
 	});
 	handler_data.current_request = request_build(handler_data.buffer);
+
+	// Set last_request for debugging purposes
+	last_request = handler_data.current_request;
+
 	std::cout << ", " << get_request_string(handler_data.current_request.type) << " request for: " << handler_data.current_request.path;
+
+	continue_request();
+}
+
+void Connection::continue_request(void)
+{
+	// after done
+	state = READY_TO_WRITE;
 }
 
 void Connection::new_response(void)
 {
 	state = WRITING;
+	handler_data.current_response = Response();
+	handler_data.current_response.content_length = std::to_string(
+		data::get_file_size("var/www/html" + handler_data.current_request.path));
 
+	handler_data.file.open("var/www/html" + handler_data.current_request.path);
+	if (!handler_data.file)
+	{
+		handler_data.current_response.set_status_code("404");
+		handler_data.current_response.content_length = "0";
+	}
+
+	data::send(socket_fd, handler_data.current_response.get_response());
+
+	// Set last_response for debugging purposes
+	last_response = handler_data.current_response;
+
+	continue_response();
 }
 
 void Connection::continue_response(void)
 {
-
-	// After being done:
-	state = IDLE;
+	if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
+		state = READY_TO_READ;
 }
 
 } // webserv

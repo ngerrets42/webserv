@@ -75,11 +75,27 @@ std::string Response::get_response(void){
 	//set the date of the response
 	set_date();
 	//build status-line
-	response = http_version + " " + status_code + " " + reason + "\n";
+	response = http_version + " " + status_code + " " + reason + "\r\n";
 	//http headers
-	response += "server: " + server + "\n";
-	response += "date: " + date + "\n";
+	response += "content-length: " + content_length + "\r\n";
+	response += "Server: " + server + "\r\n";
+	response += "Date: " + date + "\r\n";
+	
+	response += "\r\n";
+	return response;
+}
 
+std::string Response::get_response_const(void) const {
+	std::string response;
+
+	//build status-line
+	response = http_version + " " + status_code + " " + reason + "\r\n";
+	//http headers
+	response += "content-length: " + content_length + "\r\n";
+	response += "Server: " + server + "\r\n";
+	response += "Date: " + date + "\r\n";
+	
+	response += "\r\n";
 	return response;
 }
 

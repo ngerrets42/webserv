@@ -47,6 +47,9 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
 		tmp.events = POLLHUP | POLLIN;
+		Connection const* c = pair.second->get_connection(pair.first);
+		if (c && (c->get_state() == Connection::READY_TO_WRITE || c->get_state() == Connection::WRITING))
+			tmp.events |= POLLOUT;
 		fds.push_back(tmp);
 	}
 	return (fds);
@@ -93,12 +96,6 @@ int main(int argc, char **argv)
 		new Command("exit", [&](std::ostream& out, std::string str) {
 			out << "Stopping server..." << std::endl;
 			run = false;
-		})
-	);
-
-	Command::add_command(
-		new Command("echo", [](std::ostream& out, std::string str) {
-			out << str << std::endl;
 		})
 	);
 
@@ -190,7 +187,7 @@ int main(int argc, char **argv)
 			}
 
 			out << "Connection " << fd << " last response header:\n";
-			out << connection->get_last_response().header << std::endl;
+			out << connection->get_last_response().get_response_const() << std::endl;
 		})
 	);
 
