@@ -14,12 +14,10 @@ namespace webserv {
 class RequestHandler
 {
 	public:
-	static void async(Socket* socket, Connection* connection, sockfd_t fd);
+	static void handle(Socket* socket, Connection* connection, sockfd_t fd);
 
 	private:
 	RequestHandler();
-
-	static void async_thread(Socket* socket, Connection* connection, sockfd_t fd);
 
 	private:
 	static RequestHandler s_request_handler;

@@ -32,7 +32,6 @@ class Command
 	public:
 	std::string name;
 
-	private:
 	static std::unordered_map<std::string, pointer> s_commands;
 
 	function_t func;

@@ -1,19 +1,12 @@
 #include "RequestHandler.h"
 
+#include "data.h"
+
 namespace webserv {
 
 RequestHandler RequestHandler::s_request_handler = RequestHandler();
 
 RequestHandler::RequestHandler() {}
-
-void RequestHandler::async(Socket* socket, Connection* connection, sockfd_t fd)
-{
-	if (connection->busy)
-		return ;
-	connection->busy = true;
-	std::thread handler_thread(RequestHandler::async_thread, socket, connection, fd);
-	handler_thread.detach();
-}
 
 static size_t get_file_size(std::string const& fpath)
 {
@@ -177,13 +170,17 @@ void receive_post(sockfd_t fd, Socket* socket, Request& request, std::vector<cha
 	{
 		file.write(buffer.data(), buffer.size());
 		static size_t MAX_POST_RECV_SIZE = 2042;
-		buffer = socket->receive(fd, MAX_POST_RECV_SIZE);
+		buffer = data::receive(fd, MAX_POST_RECV_SIZE);
 	}
 }
 
-void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd_t fd)
+void RequestHandler::handle(Socket* socket, Connection* connection, sockfd_t fd)
 {
-	std::vector<char> buffer = socket->receive(fd, HTTP_HEADER_BUFFER_SIZE);
+	if (connection->busy)
+		return ;
+	connection->busy = true;
+
+	std::vector<char> buffer = data::receive(fd, HTTP_HEADER_BUFFER_SIZE);
 
 	if (socket->get_connection(fd) == nullptr)
 		return ;
@@ -193,12 +190,14 @@ void RequestHandler::async_thread(Socket* socket, Connection* connection, sockfd
 		return ; // Nothing to do
 	}
 
-	Request& request = connection->get_last_request();
-	request = request_build(buffer);
-	// request_print(request);
+	Request request;
+	Response response;
+	// Request& request = connection->get_last_request();
+	// request = request_build(buffer);
+	// // request_print(request);
 
-	Response& response = connection->get_last_response();
-	response = response_build(request, socket);
+	// Response& response = connection->get_last_response();
+	// response = response_build(request, socket);
 
 	if (request.type == POST && request.validity == VALID)
 		receive_post(fd, socket, request, buffer);

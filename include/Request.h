@@ -38,7 +38,7 @@ struct Request
 	Request();
 };
 
-void request_print(Request const& request);
+void request_print(Request const& request, std::ostream& out = std::cout);
 RequestType get_request_type(std::string const& word);
 char const* get_request_string(RequestType type);
 Request request_build(std::vector<char>& buffer);

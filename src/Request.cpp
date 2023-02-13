@@ -24,22 +24,22 @@ char const* get_request_string(RequestType type)
 	return "UNKNOWN";
 }
 
-void request_print(Request const& request)
+void request_print(Request const& request, std::ostream& out)
 {
-	std::cout << "REQUEST:\n";
+	out << "REQUEST:\n";
 	if (request.validity == INVALID)
 	{
-		std::cout << "INVALID" << std::endl;
+		out << "INVALID" << std::endl;
 		return ;
 	}
 	
-	std::cout << get_request_string(request.type);
+	out << get_request_string(request.type);
 
-	std::cout << ' ' << request.path << ' ' << request.http_version << '\n';
+	out << ' ' << request.path << ' ' << request.http_version << '\n';
 
-	std::cout << "Host: " << request.host << '\n';
+	out << "Host: " << request.host << '\n';
 
-	std::cout << std::endl;
+	out << std::endl;
 }
 
 // WARNING: Uses some pointer-magic
@@ -75,6 +75,7 @@ static std::string* get_value_from_key(Request& request, std::string& key)
 	return (reinterpret_cast<std::string*>(ptr + reinterpret_cast<uintptr_t>(&request)));
 }
 
+// This consumes the part of the buffer that's used
 Request request_build(std::vector<char>& buffer)
 {
 	Request request;

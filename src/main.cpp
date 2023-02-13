@@ -68,6 +68,17 @@ int main(int argc, char **argv)
 	bool run = true;
 
 	Command::add_command(
+		new Command("help", [&](std::ostream& out, std::string str) {
+			out << "Commands:\n";
+			for (auto& pair : Command::s_commands)
+			{
+				out << " - " << pair.first << "\n";
+			}
+			out << std::endl;
+		})
+	);
+
+	Command::add_command(
 		new Command("descriptors", [&](std::ostream& out, std::string str) {
 			out << "Descriptors in map: ";
 			for (auto& pair : fd_map)
@@ -114,7 +125,6 @@ int main(int argc, char **argv)
 			sockfd_t fd;
 			std::stringstream stream(str);
 			stream >> fd;
-			std::cout << fd << std::endl;
 			if (fd <= 0 || fd_map.find(fd) == fd_map.end())
 			{
 				out << "descriptor does not exist" << std::endl;
@@ -135,6 +145,54 @@ int main(int argc, char **argv)
 			out << " IP: " << connection->get_ip() << std::endl;
 		}));
 	Command::add_command(cmd);
+
+	Command::add_command(
+		new Command("last_request", [&](std::ostream& out, std::string str) {
+			sockfd_t fd;
+			std::stringstream stream(str);
+			stream >> fd;
+			if (fd <= 0 || fd_map.find(fd) == fd_map.end())
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			Socket const* socket = fd_map.at(fd);
+			Connection const* connection = socket->get_connection(fd);
+			if (!connection)
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			out << "Connection " << fd << " last request:\n";
+			request_print(connection->get_last_request(), out);
+		})
+	);
+
+	Command::add_command(
+		new Command("last_response", [&](std::ostream& out, std::string str) {
+			sockfd_t fd;
+			std::stringstream stream(str);
+			stream >> fd;
+			if (fd <= 0 || fd_map.find(fd) == fd_map.end())
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			Socket const* socket = fd_map.at(fd);
+			Connection const* connection = socket->get_connection(fd);
+			if (!connection)
+			{
+				out << "descriptor does not exist" << std::endl;
+				return ;
+			}
+
+			out << "Connection " << fd << " last response header:\n";
+			out << connection->get_last_response().header << std::endl;
+		})
+	);
 
 	terminal_setup();
 

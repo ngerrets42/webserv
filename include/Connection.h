@@ -9,18 +9,29 @@
 namespace webserv {
 
 #define HTTP_HEADER_BUFFER_SIZE 8192
-#define HTTP_RESPONSE_MIN_THREAD_SIZE 8192
 
 class Connection
 {
 	public:
+	enum State
+	{
+		IDLE = 0,
+		READING,
+		WRITING,
+		CLOSE
+	};
+
+	public:
 	Connection(sockfd_t socket_fd, addr_t address);
 	~Connection();
 
-	Request& get_last_request(void);
-	Response& get_last_response(void);
+	Request const& get_last_request(void) const;
+	Response const& get_last_response(void) const;
 
 	std::string get_ip(void) const;
+
+	void on_pollin(void);
+	void on_pollout(void);
 
 	private:
 	// unused constructors
@@ -31,6 +42,12 @@ class Connection
 
 	// functions
 	private:
+
+	void new_request(void);
+
+	void new_response(void);
+	void continue_response(void);
+
 	Request build_request(std::string buffer);
 	void build_request_get(Request& request, std::stringstream& buffer);
 	void build_request_post(Request& request, std::stringstream& buffer);
@@ -42,6 +59,15 @@ class Connection
 
 	Request last_request;
 	Response last_response;
+
+	State state;
+
+	struct HandlerData
+	{
+		Request current_request;
+		std::vector<char> buffer;
+		std::ifstream file;
+	} handler_data;
 
 	public:
 	bool busy;

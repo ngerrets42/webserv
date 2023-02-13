@@ -1,6 +1,7 @@
 #include "ShellSocket.h"
 #include "Command.h"
 #include "RequestHandler.h"
+#include "data.h"
 
 namespace webserv {
 
@@ -17,7 +18,7 @@ void ShellSocket::on_request(sockfd_t fd, Connection* connection)
 	std::cout << "ShellSocket-event: POLLIN";
 	
 	static size_t const SIZE = 256;
-	std::vector<char> buffer = receive(fd, SIZE);
+	std::vector<char> buffer = data::receive(fd, SIZE);
 
 	if (buffer.back() == '\n')
 		buffer.pop_back();
