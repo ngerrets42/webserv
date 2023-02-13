@@ -1,5 +1,4 @@
 #include "RequestHandler.h"
-
 #include "data.h"
 
 namespace webserv {

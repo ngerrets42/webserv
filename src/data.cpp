@@ -30,9 +30,6 @@ namespace data
 			return 0;
 
 		ssize_t send_size = ::send(fd, buffer.data(), buffer.size(), 0);
-		if (send_size < 0)
-			std::cerr << "send(header) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
-
 		return (send_size);
 	}
 
@@ -42,8 +39,6 @@ namespace data
 			return 0;
 
 		ssize_t send_size = ::send(fd, str.data(), str.size(), 0);
-		if (send_size < 0)
-			std::cerr << "send(header) returned " << send_size << ", for Connection {" << fd << '}' << std::endl;
 		return (send_size);
 	}
 
@@ -64,7 +59,7 @@ namespace data
 		buffer.resize(istream.gcount());
 		ssize_t send_size = send(fd, buffer);
 		if (send_size < 0 || static_cast<size_t>(send_size) != buffer.size())
-			std::cout << "send_size != buffer.size()" << std::endl;
+			std::cerr << "send_size != buffer.size()" << std::endl;
 		return (!istream.eof());
 	}
 

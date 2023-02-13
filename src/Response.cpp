@@ -78,6 +78,7 @@ std::string Response::get_response(void){
 	response = http_version + " " + status_code + " " + reason + "\r\n";
 	//http headers
 	response += "content-length: " + content_length + "\r\n";
+	// response += "content-type: " + content_type + "\r\n";
 	response += "Server: " + server + "\r\n";
 	response += "Date: " + date + "\r\n";
 	

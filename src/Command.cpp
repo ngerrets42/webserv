@@ -6,17 +6,11 @@ std::unordered_map<std::string, Command::pointer> Command::s_commands;
 
 Command::Command(std::string const& cmd)
 :	name(cmd),
-	func(nullptr)
-{
-	
-}
+	func(nullptr) {}
 
 Command::Command(std::string const& cmd, Command::function_t func)
 :	name(cmd),
-	func(func)
-{
-
-}
+	func(func) {}
 
 Command::Command(Command&& cmd)
 :	name(std::move(cmd.name)),
@@ -79,7 +73,7 @@ Command* Command::find(std::string& str)
 
 void Command::run(std::ostream& out, std::string arguments)
 {
-	func(out, arguments);
+	if (func) func(out, arguments);
 }
 
 } // webserv

@@ -13,6 +13,7 @@ namespace webserv {
 // 	tcsetattr(STDIN_FILENO, TCSANOW, &ctl);
 // }
 
+// TODO: Remove
 void Command::run_thread(void)
 {
 	while (true)

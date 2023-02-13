@@ -9,7 +9,7 @@
 namespace webserv {
 
 # define HTTP_HEADER_BUFFER_SIZE 8192
-# define MAX_SEND_BUFFER_SIZE 1024
+# define MAX_SEND_BUFFER_SIZE 8192
 
 class RequestHandler
 {

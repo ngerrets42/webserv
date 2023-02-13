@@ -14,7 +14,6 @@ Connection::Connection(sockfd_t connection_fd, addr_t address)
 	busy(false) {}
 
 Connection::~Connection() { close(socket_fd); }
-
 Connection::Connection() : socket_fd(-1) {}
 Connection::Connection(Connection const& other) { (void)other; }
 Connection& Connection::operator=(Connection const& other) { (void)other; return *this; }
@@ -83,6 +82,8 @@ void Connection::new_response(void)
 	handler_data.current_response = Response();
 	handler_data.current_response.content_length = std::to_string(
 		data::get_file_size("var/www/html" + handler_data.current_request.path));
+	
+	handler_data.current_response.content_type = "text/html";
 
 	handler_data.file.open("var/www/html" + handler_data.current_request.path);
 	if (!handler_data.file)
