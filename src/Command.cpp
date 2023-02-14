@@ -29,7 +29,7 @@ void Command::add_command(Command* cmd)
 	s_commands.emplace(cmd->name, pointer (cmd));
 }
 
-Command* Command::find_impl(std::stringstream& line_stream, std::stringstream& cons_stream)
+Command* Command::find_impl(std::stringstream& line_stream, std::stringstream& consumed_stream)
 {
 	std::string key;
 
@@ -39,8 +39,8 @@ Command* Command::find_impl(std::stringstream& line_stream, std::stringstream& c
 		if (subcommands.find(key) != subcommands.end())
 		{
 			std::string tmp;
-			cons_stream >> tmp;
-			return subcommands.at(key)->find_impl(line_stream, cons_stream);
+			consumed_stream >> tmp;
+			return subcommands.at(key)->find_impl(line_stream, consumed_stream);
 		}
 	}
 	return (this);
@@ -49,21 +49,21 @@ Command* Command::find_impl(std::stringstream& line_stream, std::stringstream& c
 Command* Command::find(std::string& str)
 {
 	std::stringstream line_stream(str);
-	std::stringstream cons_stream(str);
+	std::stringstream consumed_stream(str);
 	std::string key;
 
 	line_stream >> std::ws >> key;
 	if (s_commands.find(key) != s_commands.end())
 	{
-		Command* cmd = s_commands.at(key)->find_impl(line_stream, cons_stream);
+		Command* cmd = s_commands.at(key)->find_impl(line_stream, consumed_stream);
 		str.clear();
 		std::string tmp;
-		cons_stream >> tmp;
-		while (!cons_stream.eof())
+		consumed_stream >> tmp;
+		while (!consumed_stream.eof())
 		{
-			cons_stream >> tmp;
+			consumed_stream >> tmp;
 			str += tmp;
-			if (!cons_stream.eof())
+			if (!consumed_stream.eof())
 				str += " ";
 		}
 		return cmd;

@@ -10,6 +10,7 @@ ShellSocket::~ShellSocket() { close(socket_fd); }
 
 void ShellSocket::on_pollin(sockfd_t fd, Connection* connection)
 {
+	(void)connection;
 	std::cout << "ShellSocket-event: POLLIN";
 	
 	static size_t const SIZE = 256;

@@ -20,9 +20,9 @@ Socket::Socket(uint16_t _port) : port(_port)
 	if (fcntl(socket_fd, F_SETFL, O_NONBLOCK) < 0)
 		throw (std::runtime_error(std::strerror(errno)));
 
-//set the value of SO_REUSEADDR to true (1);
-	int optval = 1;
-	setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+	//set the value of SO_REUSEADDR to true (1);
+	int const optval = 1;
+	setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
 	// Bind settings
 	address.sin_family = AF_INET;
@@ -115,10 +115,13 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		on_pollin(it->first, it->second); // A new REQUEST is coming in on this connection
 	else if (revents & POLLOUT)
 		on_pollout(it->first, it->second);
+	if (it->second->get_state() == Connection::CLOSE)
+		fd_map.erase(it->first);
 }
 
 void Socket::on_pollin(sockfd_t fd, Connection* connection)
 {
+	(void)fd;
 	std::cout << "event: POLLIN";
 	connection->on_pollin();
 	std::cout << std::endl;
@@ -126,6 +129,7 @@ void Socket::on_pollin(sockfd_t fd, Connection* connection)
 
 void Socket::on_pollout(sockfd_t fd, Connection* connection)
 {
+	(void)fd;
 	std::cout << "event: POLLOUT";
 	connection->on_pollout();
 	std::cout << std::endl;

@@ -22,7 +22,7 @@ HDRS := $(shell find $(INC_DIRS) -name *.h)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-CPPFLAGS += $(INC_FLAGS) -MMD -MP
+CPPFLAGS += $(INC_FLAGS)
 
 .PHONY: all lib
 all: lib $(TARGET)

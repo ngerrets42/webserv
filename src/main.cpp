@@ -1,8 +1,6 @@
-#include "Connection.h"
 #include "Server.h"
 #include "Socket.h"
 #include "Command.h"
-#include "ShellSocket.h"
 #include "parsing.h"
 
 #define TIMEOUT 1000
