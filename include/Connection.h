@@ -70,6 +70,7 @@ class Connection
 	{
 		Request current_request;
 		Response current_response;
+		std::string custom_page;
 		std::vector<char> buffer;
 		std::ifstream file;
 	} handler_data;

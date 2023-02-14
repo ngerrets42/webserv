@@ -1,6 +1,7 @@
 #include "Connection.h"
 #include "RequestHandler.h"
 #include "data.h"
+#include "html.h"
 
 namespace webserv {
 
@@ -80,16 +81,26 @@ void Connection::new_response(void)
 {
 	state = WRITING;
 	handler_data.current_response = Response();
-	handler_data.current_response.content_length = std::to_string(
-		data::get_file_size("var/www/html" + handler_data.current_request.path));
-	
-	handler_data.current_response.content_type = "text/html";
 
-	handler_data.file.open("var/www/html" + handler_data.current_request.path);
-	if (!handler_data.file)
+	if (handler_data.current_request.path.back() == '/')
 	{
-		handler_data.current_response.set_status_code("404");
-		handler_data.current_response.content_length = "0";
+		handler_data.custom_page = build_index("var/www/html" + handler_data.current_request.path, handler_data.current_request.path);
+		handler_data.current_response.content_length = handler_data.custom_page.size();
+		handler_data.current_response.content_type = "text/html";
+	}
+	else
+	{
+		handler_data.current_response.content_length = std::to_string(
+			data::get_file_size("var/www/html" + handler_data.current_request.path));
+		
+		handler_data.current_response.content_type = "text/html";
+
+		handler_data.file.open("var/www/html" + handler_data.current_request.path);
+		if (!handler_data.file)
+		{
+			handler_data.current_response.set_status_code("404");
+			handler_data.current_response.content_length = "0";
+		}
 	}
 
 	data::send(socket_fd, handler_data.current_response.get_response());
@@ -102,7 +113,12 @@ void Connection::new_response(void)
 
 void Connection::continue_response(void)
 {
-	if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
+	if (handler_data.custom_page.size() > 0)
+	{
+		data::send(socket_fd, handler_data.custom_page);
+		state = READY_TO_READ;
+	}
+	else if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
 		state = READY_TO_READ;
 }
 
