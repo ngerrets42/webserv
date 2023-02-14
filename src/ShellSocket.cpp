@@ -8,11 +8,6 @@ namespace webserv {
 ShellSocket::ShellSocket(uint16_t port) : Socket(port), password("1234") {}
 ShellSocket::~ShellSocket() { close(socket_fd); }
 
-// Unavailable constructors
-// ShellSocket::ShellSocket() : socket_fd(-1) {};
-// ShellSocket::ShellSocket(ShellSocket const& other) { (void)other; }
-// ShellSocket& ShellSocket::operator=(ShellSocket const& other) { (void)other; return *this; }
-
 void ShellSocket::on_pollin(sockfd_t fd, Connection* connection)
 {
 	std::cout << "ShellSocket-event: POLLIN";

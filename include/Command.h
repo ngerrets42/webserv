@@ -2,6 +2,7 @@
 # define COMMAND_H
 
 # include "Core.h"
+# include "Socket.h"
 
 # include <functional>
 
@@ -39,6 +40,7 @@ class Command
 };
 
 void terminal_setup(void);
+void command_init(std::unordered_map<sockfd_t, Socket*>& fd_map, bool& run);
 
 } // webserv
 

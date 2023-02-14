@@ -5,6 +5,10 @@
 		"500": "500.html"
 	},
 
+	"remote_control_server": {
+		"listen": 6666
+	},
+
 	"servers": [
 		{
 			"listen": 4242,

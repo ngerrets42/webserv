@@ -38,7 +38,7 @@ namespace data
 		if (str.size() <= 0)
 			return 0;
 
-		ssize_t send_size = ::send(fd, str.data(), str.size(), 0);
+		ssize_t send_size = ::send(fd, str.data(), str.length(), 0);
 		return (send_size);
 	}
 

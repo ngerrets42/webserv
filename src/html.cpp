@@ -32,7 +32,7 @@ namespace webserv {
 			}
 			closedir(dir);
 		}		
-		page_buffer += "</pre><hr></body>\n</html>\n";
+		page_buffer += "</pre></hr></body>\n</html>\n";
 		return (page_buffer);
 	}
 
