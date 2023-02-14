@@ -10,9 +10,9 @@ class Response{
 
 	private: 
 		//contains the supported status code and their corresponding messages
-		static std::unordered_map<std::string, std::string> status_code_messages; 
+		static std::unordered_map<std::string, std::string> const& status_code_messages; 
 		//initialize the static variable status_code_messages
-		static std::unordered_map<std::string, std::string> init_status_messages(void);
+		static std::unordered_map<std::string, std::string> const& init_status_messages(void);
 
 	public:
 		std::string http_version;	//default is HTTP/1.1

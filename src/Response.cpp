@@ -1,34 +1,36 @@
 #include "Response.h"
 namespace webserv {
 
-std::unordered_map<std::string, std::string> Response::status_code_messages = Response::init_status_messages();
+std::unordered_map<std::string, std::string> const& Response::status_code_messages = Response::init_status_messages();
 
-std::unordered_map<std::string, std::string> Response::init_status_messages(void){
-	std::unordered_map<std::string , std::string> messages;
-	messages["200"] = "OK";
-	messages["201"] = "Created";
-	messages["300"] = "Multiple Choices";
-	messages["301"] = "Moved Permanently";
-	messages["302"] = "Found";
-	messages["303"] = "See Other";
-	messages["307"] = "Temporary Redirect";
-	messages["308"] = "Permanent Redirect";
-	messages["400"] = "Bad Request";
-	messages["403"] = "Forbidden";
-	messages["404"] = "Not Found";
-	messages["405"] = "Method Not Allowed";
-	messages["408"] = "Request Timeout";
-	messages["411"] = "Length Required";
-	messages["413"] = "Payload Too Large";
-	messages["414"] = "URI Too Long";
-	messages["415"] = "Unsupported Media Type";
-	messages["421"] = "Request Header Fields Too Large";
-	messages["500"] = "Internal Server Error";
-	messages["501"] = "Not Implemented";
-	messages["502"] = "Bad Gateway";
-	messages["503"] = "Service Unavailable";
-	messages["504"] = "Gateway Timeout";
-	messages["505"] = "HTTP Version Not Supported";
+std::unordered_map<std::string, std::string> const& Response::init_status_messages(void){
+	static std::unordered_map<std::string , std::string> const messages
+	{
+		{"200", "OK"},
+		{"201", "Created"},
+		{"300", "Multiple Choices"},
+		{"301", "Moved Permanently"},
+		{"302", "Found"},
+		{"303", "See Other"},
+		{"307", "Temporary Redirect"},
+		{"308", "Permanent Redirect"},
+		{"400", "Bad Request"},
+		{"403", "Forbidden"},
+		{"404", "Not Found"},
+		{"405", "Method Not Allowed"},
+		{"408", "Request Timeout"},
+		{"411", "Length Required"},
+		{"413", "Payload Too Large"},
+		{"414", "URI Too Long"},
+		{"415", "Unsupported Media Type"},
+		{"421", "Request Header Fields Too Large"},
+		{"500", "Internal Server Error"},
+		{"501", "Not Implemented"},
+		{"502", "Bad Gateway"},
+		{"503", "Service Unavailable"},
+		{"504", "Gateway Timeout"},
+		{"505", "HTTP Version Not Supported"}
+	};
 	return messages;
 }
 
