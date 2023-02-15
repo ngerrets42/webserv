@@ -63,7 +63,7 @@ void	Response::set_date(void){
 //will set the status code of the response and the message with that status code. 
 //Return	true if it status code is found
 //			false if the status code is not found
-bool	Response::set_status_code(std::string response_code){
+bool	Response::set_status_code(std::string const& response_code){
 	if (status_code_messages.find(response_code) == status_code_messages.end())
 		return false;
 	status_code = response_code;

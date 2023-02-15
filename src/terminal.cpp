@@ -26,8 +26,7 @@ void Command::run_thread(void)
 			std::cout << "Command doesn't exist" << std::endl;
 			continue;
 		}
-		else
-			cmd->run(std::cout, str);
+		cmd->run(std::cout, str);
 	}
 }
 
@@ -40,4 +39,4 @@ void terminal_setup(void)
 }
 
 
-} // webserv
+} // namespace webserv

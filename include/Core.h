@@ -2,23 +2,23 @@
 # define CORE_H
 
 // Required C-STD libraries:
-# include <sys/socket.h>
-# include <unistd.h>
 # include <arpa/inet.h>
 # include <fcntl.h>
 # include <poll.h>
 # include <string.h>
+# include <sys/socket.h>
+# include <unistd.h>
 
 // Required C++-STD libraries:
+# include <bitset>
 # include <cstring>
 # include <fstream>
-# include <sstream>
 # include <iostream>
-# include <vector>
-# include <unordered_map>
-# include <bitset>
-# include <thread>
 # include <set>
+# include <sstream>
+# include <thread>
+# include <unordered_map>
+# include <vector>
 
 namespace webserv {
 
@@ -26,6 +26,6 @@ namespace webserv {
 	typedef struct sockaddr addr_t;
 	typedef struct sockaddr_in addr_in_t;
 
-} // webserv
+} // namespace webserv
 
 #endif // CORE_H

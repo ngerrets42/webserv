@@ -71,13 +71,13 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 
 	if (fd == socket_fd)
 	{
-		if (revents & POLLERR)
+		if ((revents & POLLERR) != 0)
 		{
 			// error on socket??
 			std::cout << "event: POLLERR" << std::endl;
 			throw (std::runtime_error(std::string("POLLERR {socket:" + std::to_string(socket_fd) + "}")));
 		}
-		else if (revents & POLLIN)
+		if ((revents & POLLIN) != 0)
 		{
 			std::cout << "event: POLLIN";
 			accept_connections(fd_map);
@@ -93,7 +93,7 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		// throw (std::runtime_error(std::string("sockfd not in connection_map {socket:" + std::to_string(socket_fd) + "}")));
 	}
 
-	if (revents & POLLERR)
+	if ((revents & POLLERR) != 0)
 	{
 		// received ERR, destroy connection
 		std::cout << "event: POLLERR" << std::endl;
@@ -103,7 +103,7 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		fd_map.erase(fd);
 		return ;
 	}
-	if (revents & POLLHUP)
+	if ((revents & POLLHUP) != 0)
 	{
 		std::cout << "event: POLLHUP" << std::endl;
 		delete it->second;
@@ -111,9 +111,9 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		fd_map.erase(fd);
 		return ;
 	}
-	else if (revents & POLLIN)
+	if ((revents & POLLIN) != 0)
 		on_pollin(it->first, it->second); // A new REQUEST is coming in on this connection
-	else if (revents & POLLOUT)
+	else if ((revents & POLLOUT) != 0)
 		on_pollout(it->first, it->second);
 	if (it->second->get_state() == Connection::CLOSE)
 		fd_map.erase(it->first);
@@ -178,4 +178,4 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 sockfd_t Socket::get_socket_fd(void) const { return socket_fd; }
 
 
-} // webserv
+} // namespace webserv

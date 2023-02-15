@@ -79,6 +79,6 @@ class Connection
 	bool busy;
 };
 
-} // webserv
+} // namespace webserv
 
 #endif // CONNECTION_H
