@@ -22,6 +22,7 @@ class Response{
 		std::string server;			//the name of the webserver in this case webserv
 		std::string content_type;	//content type of the response
 		std::string content_length; //content length in bytes
+		std::unordered_map<std::string, std::string> http_headers; //contains the http headers for the response
 		//std::string body; //probably best that body is not a string object maybe do send the body seperately
 
 		Response(void);
@@ -29,7 +30,8 @@ class Response{
 
 		void	set_date(void);
 		void	set_default_values(void);
-		bool	set_status_code(std::string const& response_code);
+		bool	set_status_code(std::string const & response_code);
+		void	add_http_header(std::string const & header, std::string const & value);
 		std::string get_response(void);
 		std::string get_response_const(void) const;
 

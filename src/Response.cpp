@@ -45,8 +45,9 @@ Response::~Response(void){};
 //sets the default values for a response
 //in this case the http_version and the server application
 void	Response::set_default_values(void){
-	http_version = "HTTP/1.1";
-	server = "webserv";
+	http_version = "HTTP/1.1"; 
+	//server = "webserv";
+	add_http_header("server", "webserv");
 }
 
 void	Response::set_date(void){
@@ -63,7 +64,7 @@ void	Response::set_date(void){
 //will set the status code of the response and the message with that status code. 
 //Return	true if it status code is found
 //			false if the status code is not found
-bool	Response::set_status_code(std::string const& response_code){
+bool	Response::set_status_code(std::string const &response_code){
 	if (status_code_messages.find(response_code) == status_code_messages.end())
 		return false;
 	status_code = response_code;
@@ -71,19 +72,23 @@ bool	Response::set_status_code(std::string const& response_code){
 	return true;
 }
 
+void	Response::add_http_header(std::string const & header, std::string const & value){
+	http_headers[header] = value;
+}
+
 std::string Response::get_response(void){
 	std::string response;
 
 	//set the date of the response
 	set_date();
+	add_http_header("Date", date);
 	//build status-line
 	response = http_version + " " + status_code + " " + reason + "\r\n";
 	//http headers
-	response += "content-length: " + content_length + "\r\n";
-	// response += "content-type: " + content_type + "\r\n";
-	response += "Server: " + server + "\r\n";
-	response += "Date: " + date + "\r\n";
-	
+	std::unordered_map<std::string, std::string>::iterator it;
+	for(it = http_headers.begin(); it != http_headers.end(); ++it){
+		response += it->first + ": " + it->second + "\r\n";
+	}
 	response += "\r\n";
 	return response;
 }
@@ -94,10 +99,10 @@ std::string Response::get_response_const(void) const {
 	//build status-line
 	response = http_version + " " + status_code + " " + reason + "\r\n";
 	//http headers
-	response += "content-length: " + content_length + "\r\n";
-	response += "Server: " + server + "\r\n";
-	response += "Date: " + date + "\r\n";
-	
+	std::unordered_map<std::string, std::string>::const_iterator it;
+	for(it = http_headers.begin(); it != http_headers.end(); ++it){
+		response += it->first + ": " + it->second + "\r\n";
+	}
 	response += "\r\n";
 	return response;
 }
