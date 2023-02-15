@@ -15,9 +15,12 @@ class Server
 	// hold server config
 
 	private:
+
+	Location default_location;
+
 	std::unordered_map<std::string, Location> location_map; // map of Location path string - Location class
 };
 
-} // webserv
+} // namespace webserv
 
 #endif // SERVER_H

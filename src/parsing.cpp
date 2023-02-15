@@ -42,4 +42,4 @@ std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<S
 	return (sockets);
 }
 
-} // webserv
+} // namespace webserv

@@ -22,6 +22,8 @@
 				"500": "500.html"
 			},
 
+			"root": "var/www/html",
+
 			"locations": {
 				"/": {
 					"allowed_methods": ["GET"],
@@ -29,8 +31,11 @@
 					"index": "index.html",
 					"auto_index": true
 				},
-				"/images": {
+				"/images/": {
 					"redirect": "http://images.localhost:4242/"
+				},
+
+				"/images/folder/": {
 				}
 			}
 		},
@@ -40,7 +45,7 @@
 			"server_names": ["images.127.0.0.1", "images.localhost", "images.10.11.4.4", "images.example"],
 
 			"locations": {
-				"/cgi": {
+				"/": {
 					"client_body_size": 10000,
 					"allowed_methods": ["GET", "POST", "DELETE"],
 					"root": "var/www/upload",

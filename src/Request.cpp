@@ -79,7 +79,7 @@ static std::string* get_value_from_key(Request& request, std::string& key)
 Request request_build(std::vector<char>& buffer)
 {
 	Request request;
-	if (buffer.size() == 0)
+	if (buffer.empty())
 		return (request);
 
 	// Create a string-stream from the data
@@ -133,4 +133,4 @@ Request request_build(std::vector<char>& buffer)
 	return (request);
 }
 
-} // webserv
+} // namespace webserv

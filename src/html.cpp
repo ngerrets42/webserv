@@ -36,4 +36,4 @@ namespace webserv {
 		return (page_buffer);
 	}
 
-} // webserv
+} // namespace webserv

@@ -77,6 +77,11 @@ void Connection::continue_request(void)
 	state = READY_TO_WRITE;
 }
 
+static std::string content_type_from_ext(std::string const& ext)
+{
+	return ("text/plain");
+}
+
 void Connection::new_response(void)
 {
 	state = WRITING;
@@ -85,7 +90,7 @@ void Connection::new_response(void)
 	if (handler_data.current_request.path.back() == '/')
 	{
 		handler_data.custom_page = build_index("var/www/html" + handler_data.current_request.path, handler_data.current_request.path);
-		handler_data.current_response.content_length = handler_data.custom_page.size();
+		handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
 		handler_data.current_response.content_type = "text/html";
 	}
 	else
@@ -113,7 +118,7 @@ void Connection::new_response(void)
 
 void Connection::continue_response(void)
 {
-	if (handler_data.custom_page.size() > 0)
+	if (!handler_data.custom_page.empty())
 	{
 		data::send(socket_fd, handler_data.custom_page);
 		state = READY_TO_READ;
@@ -122,4 +127,4 @@ void Connection::continue_response(void)
 		state = READY_TO_READ;
 }
 
-} // webserv
+} // namespace webserv
