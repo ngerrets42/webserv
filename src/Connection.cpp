@@ -60,6 +60,7 @@ void Connection::new_request(void)
 	handler_data = HandlerData();
 	handler_data.buffer = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&]{
 		this->state = CLOSE;
+		std::cout << "ON_ZERO!" << std::endl;
 	});
 	handler_data.current_request = request_build(handler_data.buffer);
 
@@ -87,6 +88,11 @@ void Connection::new_response(void)
 	state = WRITING;
 	handler_data.current_response = Response();
 
+	handler_data.current_response.set_status_code("200");
+	if (handler_data.current_request.connection == "keep-alive")
+		handler_data.current_response.add_http_header("connection", "keep-alive");
+	else
+		handler_data.current_response.add_http_header("connection", "close");
 	if (handler_data.current_request.path.back() == '/')
 	{
 		handler_data.custom_page = build_index("var/www/html" + handler_data.current_request.path, handler_data.current_request.path);
@@ -121,10 +127,20 @@ void Connection::continue_response(void)
 	if (!handler_data.custom_page.empty())
 	{
 		data::send(socket_fd, handler_data.custom_page);
-		state = READY_TO_READ;
+		state = CLOSE; // Close is default unless keep-alive
+		if (handler_data.current_request.connection == "keep-alive")
+			state = READY_TO_READ;
+		else
+			std::cout << "connection: " << handler_data.current_request.connection << std::endl;
 	}
 	else if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
-		state = READY_TO_READ;
+	{
+		state = CLOSE; // Close is default unless keep-alive
+		if (handler_data.current_request.connection == "keep-alive")
+			state = READY_TO_READ;
+		else
+			std::cout << "connection: |" << handler_data.current_request.connection << "|" << std::endl;
+	}
 }
 
 } // namespace webserv

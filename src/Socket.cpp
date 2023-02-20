@@ -39,7 +39,7 @@ Socket::Socket(uint16_t _port) : port(_port)
 	}
 
 	// Listen
-	const int max_queue = 10;
+	const int max_queue = 100;
 	if (listen(socket_fd, max_queue) < 0)
 	{
 		close(socket_fd);
@@ -115,8 +115,15 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 		on_pollin(it->first, it->second); // A new REQUEST is coming in on this connection
 	else if ((revents & POLLOUT) != 0)
 		on_pollout(it->first, it->second);
+	
+	// Close connections that need to close
 	if (it->second->get_state() == Connection::CLOSE)
-		fd_map.erase(it->first);
+	{
+		std::cout << "Closing connection" << std::endl;
+		delete it->second;
+		connection_map.erase(it);
+		fd_map.erase(fd);
+	}
 }
 
 void Socket::on_pollin(sockfd_t fd, Connection* connection)
@@ -152,7 +159,8 @@ bool Socket::is_active(sockfd_t fd) const
 {
 	if (fd == socket_fd)
 		return (true);
-	if (connection_map.find(fd) == connection_map.end())
+	auto it = connection_map.find(fd);
+	if (it == connection_map.end())
 		return (false);
 	return (!connection_map.at(fd)->busy);
 }

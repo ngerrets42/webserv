@@ -2,6 +2,8 @@
 #include "Command.h"
 #include "Socket.h"
 #include "parsing.h"
+#include <cstddef>
+#include <cstdlib>
 
 #define TIMEOUT 1000
 
@@ -38,21 +40,29 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 
 int main(int argc, char **argv)
 {
-	njson::JsonParser json_parser("config/webserv.json");
+	std::string config_path = "config/webserv.json";
+
+	if (argc > 1)
+		config_path = argv[1];
+
+	njson::JsonParser json_parser(config_path);
 	if (json_parser.has_error())
 	{
-		std::cerr << json_parser.get_error_msg() << std::endl;
+		std::cerr << "Can't open file: " << config_path << std::endl;
 		return (EXIT_FAILURE);
 	}
 
 	njson::Json::pointer root_node = json_parser.parse();
-	if (!root_node)
+	if (root_node->is<std::nullptr_t>())
 	{
 		std::cerr << "Invalid configuration file" << std::endl;
 		return (EXIT_FAILURE);
 	}
 
 	std::vector<std::unique_ptr<Server>> servers = parse_servers(root_node);
+	if (servers.empty())
+		return (EXIT_FAILURE);
+
 	std::vector<std::unique_ptr<Socket>> sockets = build_sockets(servers);
 	std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
 

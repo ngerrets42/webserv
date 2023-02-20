@@ -5,7 +5,7 @@ namespace webserv {
 namespace data
 {
 	// Return a buffer of data that should contain the header of the request
-	std::vector<char> receive(sockfd_t fd, size_t max_size, std::function<void()> const& on_zero = std::function<void()>(nullptr))
+	std::vector<char> receive(sockfd_t fd, size_t max_size, std::function<void()> const& on_zero)
 	{
 		std::vector<char> buffer(max_size);
 		ssize_t recv_size = recv(fd, buffer.data(), max_size, 0);
@@ -26,7 +26,7 @@ namespace data
 
 	ssize_t send(sockfd_t fd, std::vector<char> const& buffer)
 	{
-		if (buffer.size() <= 0)
+		if (buffer.empty())
 			return 0;
 
 		ssize_t send_size = ::send(fd, buffer.data(), buffer.size(), 0);
@@ -35,7 +35,7 @@ namespace data
 
 	ssize_t send(sockfd_t fd, std::string const& str)
 	{
-		if (str.size() <= 0)
+		if (str.empty())
 			return 0;
 
 		ssize_t send_size = ::send(fd, str.data(), str.length(), 0);
@@ -73,6 +73,6 @@ namespace data
 		return (file_length);
 	}
 
-} // data
+} // namespace data
 
-} // webserv
+} // namespace webserv

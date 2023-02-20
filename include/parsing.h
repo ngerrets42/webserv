@@ -12,6 +12,6 @@ namespace webserv {
 std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_node);
 std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers);
 
-} // webserv
+} // namespace webserv
 
 #endif // PARSING_H

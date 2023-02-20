@@ -1,4 +1,6 @@
 #include "Request.h"
+#include <algorithm>
+#include <cctype>
 
 namespace webserv {
 
@@ -37,7 +39,8 @@ void request_print(Request const& request, std::ostream& out)
 
 	out << ' ' << request.path << ' ' << request.http_version << '\n';
 
-	out << "Host: " << request.host << '\n';
+	out << "host: " << request.host << '\n';
+	out << "connection: " << request.connection << '\n';
 
 	out << std::endl;
 }
@@ -47,24 +50,11 @@ static std::string* get_value_from_key(Request& request, std::string& key)
 {
 	static Request r_ref;
 	static std::unordered_map<std::string, std::string*> accepted_keys {
+		{ "host",					&r_ref.host },
+		{ "connection",				&r_ref.connection },
 		{ "Accept-Charset",			nullptr },
 		{ "Accept-Encoding",		nullptr },
-		{ "Accept-Language",		nullptr },
-		{ "Authorization",			nullptr },
-		{ "Expect",					nullptr },
-		{ "From",					nullptr },
-		{ "Host",					&r_ref.host },
-		{ "If-Match",				nullptr },
-		{ "If-Modified-Since",		nullptr },
-		{ "If-None-Match",			nullptr },
-		{ "If-Range",				nullptr },
-		{ "If-Unmodified-Since",	nullptr },
-		{ "Max-Forwards",			nullptr },
-		{ "Proxy-Authorization",	nullptr },
-		{ "Range",					nullptr },
-		{ "Referer",				nullptr },
-		{ "TE",						nullptr },
-		{ "User-Agent",				nullptr }
+		{ "Accept-Language",		nullptr }
 	};
 
 	if (accepted_keys.find(key) == accepted_keys.end())
@@ -93,24 +83,27 @@ Request request_build(std::vector<char>& buffer)
 	if (request.type == UNKNOWN) return (request); // Unsupported request
 	
 	buffer_stream >> request.path;
-	if (request.path.length() == 0)
-		return (request); // No path
+	if (request.path.length() == 0) return (request); // No path
 	
 	buffer_stream >> request.http_version;
-	if (request.http_version.length() == 0)
-		return (request); // No HTTP version
+	if (request.http_version.length() == 0) return (request); // No HTTP version
 	
 	std::getline(buffer_stream, word); // skip line
 
 	while (!buffer_stream.eof())
 	{
-		if (buffer_stream.peek() == '\r')
-			break ;
+		// if (buffer_stream.peek() == '\r')
+		// 	break ;
 		buffer_stream >> word;
 		if (word.length() == 0)
 			break ;
 		// remove last character from word (the ':')
 		word.erase(word.length() - 1);
+
+		// Field case insensitive
+		std::transform(word.begin(), word.end(), word.begin(),
+			[](unsigned char c) { return std::tolower(c); });
+
 		std::string* value = get_value_from_key(request, word);
 		if (value == nullptr)
 		{
@@ -120,11 +113,24 @@ Request request_build(std::vector<char>& buffer)
 		}
 		buffer_stream.get(); // skip the space
 		std::getline(buffer_stream, *value);
+		// TODO: filter out '\r' '\n'
+		if (value->length() > 0)
+			value->erase(value->end() - 1);
+		// Field case insensitive
+		std::transform(value->begin(), value->end(), value->begin(),
+			[](unsigned char c) { return std::tolower(c); });
 	}
 	std::getline(buffer_stream, word);
 	
 	// consume the read part of the buffer
-	buffer.erase(buffer.begin(), buffer.begin() + buffer_stream.tellg());
+	ssize_t tg = buffer_stream.tellg();
+	if (tg > 0)
+		buffer.erase(buffer.begin(), buffer.begin() + tg);
+	else
+	{
+		std::cout << buffer_stream.str() << std::endl;
+		return (request); // Invalid request
+	}
 	// stored_buffer = buffer.substr(buffer_stream.tellg());
 	
 	// std::cout << "stored buffer: {" << stored_buffer << '}' << std::endl;

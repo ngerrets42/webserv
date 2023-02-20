@@ -34,6 +34,7 @@ struct Request
 
 	//
 	std::string host;
+	std::string connection;
 
 	Request();
 };
