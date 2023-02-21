@@ -1,5 +1,6 @@
 #include "html.h"
 #include <dirent.h>
+#include <sys/stat.h>
 
 namespace webserv {
 
@@ -8,7 +9,8 @@ namespace webserv {
 		std::string page_buffer;
 
 		page_buffer += "<html>\n<head><title>Index of " + dir_name + "</title></head>\n";
-		page_buffer += "<h1>Index of " + dir_name + "</h1><hr><pre><a href=\"../\">../</a>\n";
+		//page_buffer += "<h1>Index of " + dir_name + "</h1><hr><pre><a href=\"../\">../</a>\n";
+		page_buffer += "<h1>Index of " + dir_name + "</h1><hr><a href=\"../\">../</a>\n";
 
 		DIR *dir;
 		struct dirent *ent;
@@ -18,21 +20,32 @@ namespace webserv {
 		}
 		else
 		{
+			page_buffer += "<table><tr><th>Name</th><th>Last Modified</th><th>Size</th></tr>";
 			while ((ent = readdir(dir)) != NULL)
 			{
+				std::string filepath = dir_path + "/";
+				if(ent->d_type != DT_DIR){
+					filepath += ent->d_name;
+				}
+				struct stat buf;
+				stat(filepath.c_str(), &buf);
+				char timeline[80];
+				strftime(timeline,80,"%D %r", localtime(&buf.st_mtimespec.tv_sec));
+				page_buffer += "<tr><th>";
 				page_buffer += "<a href=\"";
 				page_buffer += ent->d_name;
 				if (ent->d_type == DT_DIR)
 					page_buffer += '/';
 				page_buffer += "\">";
 				page_buffer += ent->d_name;
-				page_buffer += "</a>\t";
-				page_buffer += '-'; // TODO: file size & date
+				page_buffer += "</a></th><th>";
+				page_buffer += timeline; // TODO: file size & date
+				page_buffer += "</th><th>" + std::to_string(buf.st_size) + "</th>";
 				page_buffer += '\n';
 			}
 			closedir(dir);
 		}		
-		page_buffer += "</pre></hr></body>\n</html>\n";
+		page_buffer += "</table></hr></body>\n</html>\n";
 		return (page_buffer);
 	}
 
