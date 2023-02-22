@@ -1,11 +1,44 @@
 #include "parsing.h"
 #include "ShellSocket.h"
+#include <_types/_uint16_t.h>
 
 namespace webserv {
 
+static void build_errorpages(Server* server, njson::Json::pointer& node)
+{
+	for (auto& pair : node->get<njson::Json::object>())
+	{
+		server->add_error_page(std::stoi(pair.first), pair.second->get<std::string>());
+	}
+}
+
+
 Server* build_server(njson::Json::pointer& node)
 {
-	// TODO: build from json
+
+	Server* server = new Server();
+
+	if (!node->is<njson::Json::object>())
+	{
+		std::cerr << "Not an object" << std::endl;
+		return nullptr;
+	}
+
+	try
+	{
+		uint16_t port = node->find("listen")->get<int>();
+		std::string host = node->find("host")->get<std::string>();
+
+		build_errorpages(server, node->find("error_pages"));
+
+	}
+	catch (njson::Json::json_exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		delete server;
+		return (nullptr);
+	}
+
 	return (new Server());
 }
 
