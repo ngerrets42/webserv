@@ -80,6 +80,10 @@ void Connection::continue_request(void)
 
 static std::string content_type_from_ext(std::string const& ext)
 {
+	if (ext == ".html")
+		return ("text/html");
+	if (ext == ".ico")
+		return "image/x-icon";
 	return ("text/plain");
 }
 
@@ -92,7 +96,7 @@ void Connection::new_response(Socket& socket)
 	Server& server = socket.get_server(handler_data.current_request.host);
 	Location loc = server.get_location(handler_data.current_request.path);
 
-	std::cout << " LOCPATH: " << loc.path << "AUTOINDEX: " << loc.autoindex.first << '|' << loc.autoindex.second << ", INDEX: " << loc.index;
+	// std::cout << " LOCPATH: " << loc.path << "AUTOINDEX: " << loc.autoindex.first << '|' << loc.autoindex.second << ", INDEX: " << loc.index;
 
 	std::string const& root = server.get_root(loc);
 
@@ -134,7 +138,6 @@ void Connection::new_response(Socket& socket)
 			handler_data.current_response.set_status_code("404");
 			handler_data.current_response.content_length.clear();
 		}
-
 		size_t pos = fpath.find_last_of('.');
 		if (pos != std::string::npos)
 			handler_data.current_response.content_type = content_type_from_ext(fpath.substr(pos));
@@ -157,6 +160,11 @@ void Connection::new_response(Socket& socket)
 			handler_data.file.open(fpath);
 			if (!handler_data.file)
 				handler_data.current_response.content_length.clear();
+			size_t pos = fpath.find_last_of('.');
+			if (pos != std::string::npos)
+				handler_data.current_response.content_type = content_type_from_ext(fpath.substr(pos));
+			else
+				handler_data.current_response.content_type = "text/plain";
 		}
 	}
 
@@ -170,6 +178,9 @@ void Connection::new_response(Socket& socket)
 		handler_data.current_response.add_http_header("connection", "keep-alive");
 	else
 		handler_data.current_response.add_http_header("connection", "close");
+
+	if (!handler_data.current_response.content_type.empty())
+		handler_data.current_response.add_http_header("content-type", handler_data.current_response.content_type);
 
 	data::send(socket_fd, handler_data.current_response.get_response());
 
