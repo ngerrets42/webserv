@@ -62,7 +62,7 @@ std::string Location::get_error_page(int error_code) const{
 //		autoindex	false
 //		client_max_body_size	0 (meaning no limit)
 
-Server::Server(void):port(80),root("/var/www/html"), index("index.html"),autoindex(false), client_max_body_size(0){}
+Server::Server(void):port(80),root("/var/www/html"), index(""),autoindex(false), client_max_body_size(0){}
 
 Server::~Server(void){};
 

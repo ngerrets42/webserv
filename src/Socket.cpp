@@ -1,6 +1,8 @@
 #include "Socket.h"
 
 # include "RequestHandler.h"
+#include <memory>
+#include <stdexcept>
 
 namespace webserv {
 
@@ -130,7 +132,7 @@ void Socket::on_pollin(sockfd_t fd, Connection* connection)
 {
 	(void)fd;
 	std::cout << "event: POLLIN";
-	connection->on_pollin();
+	connection->on_pollin(*this);
 	std::cout << std::endl;
 }
 
@@ -138,7 +140,7 @@ void Socket::on_pollout(sockfd_t fd, Connection* connection)
 {
 	(void)fd;
 	std::cout << "event: POLLOUT";
-	connection->on_pollout();
+	connection->on_pollout(*this);
 	std::cout << std::endl;
 }
 
@@ -181,6 +183,23 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 		fd_map.emplace(connection_fd, this);
 	}
 	std::cout << std::endl;
+}
+
+Server& Socket::get_server(std::string const& host)
+{
+	if (servers.empty())
+		throw (std::runtime_error("Socket has no servers"));
+	for (auto* s : servers)
+	{
+		if (s->contain_server_name(host))
+			return (*s);
+	}
+	return (*servers[0]);
+}
+
+void Socket::add_server_ref(std::unique_ptr<Server>& server_ref)
+{
+	servers.push_back(server_ref.get());
 }
 
 sockfd_t Socket::get_socket_fd(void) const { return socket_fd; }

@@ -1,6 +1,7 @@
 #include "parsing.h"
 #include "ShellSocket.h"
-#include <_types/_uint16_t.h>
+#include <algorithm>
+#include <memory>
 
 namespace webserv {
 
@@ -12,10 +13,8 @@ static void build_errorpages(Server* server, njson::Json::pointer& node)
 	}
 }
 
-
 Server* build_server(njson::Json::pointer& node)
 {
-
 	Server* server = new Server();
 
 	if (!node->is<njson::Json::object>())
@@ -26,20 +25,20 @@ Server* build_server(njson::Json::pointer& node)
 
 	try
 	{
-		uint16_t port = node->find("listen")->get<int>();
-		std::string host = node->find("host")->get<std::string>();
+		// uint16_t port = node->find("listen")->get<int>();
+		// std::string host = node->find("host")->get<std::string>();
 
-		build_errorpages(server, node->find("error_pages"));
+		// build_errorpages(server, node->find("error_pages"));
 
 	}
 	catch (njson::Json::json_exception& e)
 	{
-		std::cerr << e.what() << std::endl;
+		std::cerr << "json_exception: " << e.what() << std::endl;
 		delete server;
 		return (nullptr);
 	}
 
-	return (new Server());
+	return (server);
 }
 
 // allocates new servers
@@ -63,6 +62,30 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 		servers.emplace_back(tmp);
 	}
 
+	// CUSTOM SERVER
+	// TODO: remove
+	Server* s = new Server();
+
+	s->port = 8080;
+	s->add_server_name("localhost");
+	s->add_error_page(404, "404.html");
+	s->add_allowed_http_command("GET");
+	s->root = "var/www/html";
+	s->host = "0.0.0.0";
+
+	Location loc1("/");
+	loc1.index = "index.html";
+
+	Location loc2("/pages/");
+	loc2.add_allowed_http_command("GET");
+	loc2.set_auto_index(true);
+	loc2.index = "";
+
+	s->add_location(loc1);
+	s->add_location(loc2);
+
+	servers.emplace_back(s);
+
 	return (servers);
 }
 
@@ -70,8 +93,24 @@ std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<S
 {
 	std::vector<std::unique_ptr<Socket>> sockets;
 
-	sockets.emplace_back(new Socket(8080));
 	sockets.emplace_back(new ShellSocket(6666));
+
+	for (auto& s : servers)
+	{
+		auto it = std::find_if(sockets.begin(), sockets.end(), [&](std::unique_ptr<Socket>& sock){
+			return (sock->get_port() == s->port);
+		});
+
+		if (it != sockets.end())
+			it->get()->add_server_ref(s);
+		else
+		{
+			Socket* sock = new Socket(s->port);
+			sock->add_server_ref(s);
+			sockets.emplace_back(sock);
+		}
+	}
+
 	return (sockets);
 }
 

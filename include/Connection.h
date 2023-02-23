@@ -10,6 +10,8 @@ namespace webserv {
 
 #define HTTP_HEADER_BUFFER_SIZE 8192
 
+class Socket;
+
 class Connection
 {
 	public:
@@ -33,8 +35,8 @@ class Connection
 
 	State get_state(void) const;
 
-	void on_pollin(void);
-	void on_pollout(void);
+	void on_pollin(Socket& socket);
+	void on_pollout(Socket& socket);
 
 	private:
 	// unused constructors
@@ -49,7 +51,7 @@ class Connection
 	void new_request(void);
 	void continue_request(void);
 
-	void new_response(void);
+	void new_response(Socket& socket);
 	void continue_response(void);
 
 	Request build_request(std::string buffer);

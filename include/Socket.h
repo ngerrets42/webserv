@@ -29,6 +29,10 @@ class Socket
 
 	uint16_t get_port(void) const;
 
+	Server& get_server(std::string const& host);
+
+	void add_server_ref(std::unique_ptr<Server>& server_ref);
+
 	// std::vector<char> receive(sockfd_t fd, size_t max_size);
 
 	/**
@@ -58,6 +62,6 @@ class Socket
 	std::unordered_map<sockfd_t, Connection*> connection_map; // map of Connection socket fd - Connection class
 };
 
-} // webserv
+} // namespace webserv
 
 #endif // SOCKET_H

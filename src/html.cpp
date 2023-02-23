@@ -16,7 +16,7 @@ namespace webserv {
 		if ((dir = opendir (dir_path.c_str())) == NULL)
 		{
 			std::cerr << "Can't open directory: " << dir_path << std::endl;
-			//maybe sent a 500 Internal Server Error?
+			return (std::string {});
 		}
 		else
 		{

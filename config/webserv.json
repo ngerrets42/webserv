@@ -13,8 +13,9 @@
 		{
 			"listen": 4242,
 			"host": "0.0.0.0",
-			"server_names": ["*", "example"],
+			"server_names": ["localhost:4242", "f1r4s15.codam.nl:4242"],
 			"client_body_size": 1000,
+			"index": "",
 
 			"error_pages": {
 				"404": "404.html",
@@ -32,7 +33,7 @@
 					"auto_index": true
 				},
 				"/images/": {
-					"redirect": "http://images.localhost:4242/"
+					"auto_index": true
 				},
 
 				"/images/folder/": {

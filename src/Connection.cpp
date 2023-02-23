@@ -1,5 +1,6 @@
 #include "Connection.h"
 #include "RequestHandler.h"
+#include "Socket.h"
 #include "data.h"
 #include "html.h"
 
@@ -32,7 +33,7 @@ std::string Connection::get_ip(void) const
 	return (as_str);
 }
 
-void Connection::on_pollin(void)
+void Connection::on_pollin(Socket& socket)
 {
 	// Receive request OR continue receiving in case of POST
 	switch (state)
@@ -43,12 +44,12 @@ void Connection::on_pollin(void)
 	}	
 }
 
-void Connection::on_pollout(void)
+void Connection::on_pollout(Socket& socket)
 {
 	// Send response OR continue sending response
 	switch (state)
 	{
-		case READY_TO_WRITE: new_response(); break;
+		case READY_TO_WRITE: new_response(socket); break;
 		case WRITING: continue_response(); break;
 		default: return;
 	}
@@ -60,7 +61,6 @@ void Connection::new_request(void)
 	handler_data = HandlerData();
 	handler_data.buffer = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&]{
 		this->state = CLOSE;
-		std::cout << "ON_ZERO!" << std::endl;
 	});
 	handler_data.current_request = request_build(handler_data.buffer);
 
@@ -83,36 +83,93 @@ static std::string content_type_from_ext(std::string const& ext)
 	return ("text/plain");
 }
 
-void Connection::new_response(void)
+void Connection::new_response(Socket& socket)
 {
 	state = WRITING;
 	handler_data.current_response = Response();
 
+	// Get the Server from host
+	Server& server = socket.get_server(handler_data.current_request.host);
+	Location loc = server.get_location(handler_data.current_request.path);
+
+	std::cout << " LOCPATH: " << loc.path << "AUTOINDEX: " << loc.autoindex.first << '|' << loc.autoindex.second << ", INDEX: " << loc.index;
+
+	std::string const& root = server.get_root(loc);
+
+	std::string fpath = root + handler_data.current_request.path;
+	
 	handler_data.current_response.set_status_code("200");
+
+	// path is a directory
+	if (fpath.back() == '/')
+	{
+		std::string const& indexp = server.get_index_page(loc);
+		std::cout << " indexp: " << indexp;
+		if (!indexp.empty())
+			fpath += indexp;
+		else if (server.is_auto_index_on(loc))
+		{
+			std::cout << "\nBUILDING AUTO-INDEX\n";
+			handler_data.custom_page = build_index(root + handler_data.current_request.path, handler_data.current_request.path);
+			if (handler_data.custom_page.empty())
+				handler_data.current_response.set_status_code("500");
+			else
+			{
+				handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
+				handler_data.current_response.content_type = "text/html";
+			}
+		}
+		else
+			handler_data.current_response.set_status_code("404");
+	}
+
+	if (handler_data.custom_page.empty())
+	{
+		handler_data.current_response.content_length = std::to_string(
+			data::get_file_size(fpath));
+
+		handler_data.file.open(fpath);
+		if (!handler_data.file)
+		{
+			handler_data.current_response.set_status_code("404");
+			handler_data.current_response.content_length.clear();
+		}
+
+		size_t pos = fpath.find_last_of('.');
+		if (pos != std::string::npos)
+			handler_data.current_response.content_type = content_type_from_ext(fpath.substr(pos));
+		else
+			handler_data.current_response.content_type = "text/plain";
+	}
+
+	// In case of error-code
+	if (handler_data.current_response.status_code != "200")
+	{
+		std::cout << ": ERROR " << handler_data.current_response.status_code;
+		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
+		handler_data.current_response.content_length.clear();
+		if (!error_path.empty())
+		{
+			fpath = root + '/' + error_path;
+			handler_data.current_response.content_length = std::to_string(
+			data::get_file_size(fpath));
+
+			handler_data.file.open(fpath);
+			if (!handler_data.file)
+				handler_data.current_response.content_length.clear();
+		}
+	}
+
+	std::cout << ": " << fpath;
+
+	if (handler_data.current_response.content_length.empty())
+		handler_data.current_response.content_length = "0";
+	handler_data.current_response.add_http_header("content-length", handler_data.current_response.content_length);
+
 	if (handler_data.current_request.connection == "keep-alive")
 		handler_data.current_response.add_http_header("connection", "keep-alive");
 	else
 		handler_data.current_response.add_http_header("connection", "close");
-	if (handler_data.current_request.path.back() == '/')
-	{
-		handler_data.custom_page = build_index("var/www/html" + handler_data.current_request.path, handler_data.current_request.path);
-		handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
-		handler_data.current_response.content_type = "text/html";
-	}
-	else
-	{
-		handler_data.current_response.content_length = std::to_string(
-			data::get_file_size("var/www/html" + handler_data.current_request.path));
-		
-		handler_data.current_response.content_type = "text/html";
-
-		handler_data.file.open("var/www/html" + handler_data.current_request.path);
-		if (!handler_data.file)
-		{
-			handler_data.current_response.set_status_code("404");
-			handler_data.current_response.content_length = "0";
-		}
-	}
 
 	data::send(socket_fd, handler_data.current_response.get_response());
 

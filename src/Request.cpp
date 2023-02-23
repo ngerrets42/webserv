@@ -126,11 +126,11 @@ Request request_build(std::vector<char>& buffer)
 	ssize_t tg = buffer_stream.tellg();
 	if (tg > 0)
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
-	else
-	{
-		std::cout << buffer_stream.str() << std::endl;
-		return (request); // Invalid request
-	}
+	// else
+	// {
+	// 	std::cout << " BUFFER_STREAM.tellg <= 0: " << buffer_stream.str() << std::endl;
+	// 	return (request); // Invalid request
+	// }
 	// stored_buffer = buffer.substr(buffer_stream.tellg());
 	
 	// std::cout << "stored buffer: {" << stored_buffer << '}' << std::endl;
