@@ -1,6 +1,5 @@
 #include "Socket.h"
 
-# include "RequestHandler.h"
 #include <memory>
 #include <stdexcept>
 
@@ -121,7 +120,6 @@ void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Soc
 	// Close connections that need to close
 	if (it->second->get_state() == Connection::CLOSE)
 	{
-		std::cout << "Closing connection" << std::endl;
 		delete it->second;
 		connection_map.erase(it);
 		fd_map.erase(fd);

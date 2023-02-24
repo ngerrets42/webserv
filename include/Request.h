@@ -29,12 +29,7 @@ struct Request
 	std::string path;
 	std::string http_version;
 	std::unordered_map<std::string, std::string> path_arguments;
-
-	std::string content_length;
-
-	//
-	std::string host;
-	std::string connection;
+	std::unordered_map<std::string, std::string> fields;
 
 	Request();
 };

@@ -39,30 +39,12 @@ void request_print(Request const& request, std::ostream& out)
 
 	out << ' ' << request.path << ' ' << request.http_version << '\n';
 
-	out << "host: " << request.host << '\n';
-	out << "connection: " << request.connection << '\n';
+	for (const auto& pair : request.fields)
+	{
+		out << pair.first << ": " << pair.second << '\n';
+	}
 
 	out << std::endl;
-}
-
-// WARNING: Uses some pointer-magic
-static std::string* get_value_from_key(Request& request, std::string& key)
-{
-	static Request r_ref;
-	static std::unordered_map<std::string, std::string*> accepted_keys {
-		{ "host",					&r_ref.host },
-		{ "connection",				&r_ref.connection },
-		{ "Accept-Charset",			nullptr },
-		{ "Accept-Encoding",		nullptr },
-		{ "Accept-Language",		nullptr }
-	};
-
-	if (accepted_keys.find(key) == accepted_keys.end())
-		return (nullptr);
-	if (accepted_keys.at(key) == nullptr)
-		return (nullptr);
-	uintptr_t ptr = reinterpret_cast<uintptr_t>(accepted_keys.at(key)) - reinterpret_cast<uintptr_t>(&r_ref);
-	return (reinterpret_cast<std::string*>(ptr + reinterpret_cast<uintptr_t>(&request)));
 }
 
 // This consumes the part of the buffer that's used
@@ -92,8 +74,8 @@ Request request_build(std::vector<char>& buffer)
 
 	while (!buffer_stream.eof())
 	{
-		// if (buffer_stream.peek() == '\r')
-		// 	break ;
+		if (buffer_stream.peek() == '\r')
+			break ;
 		buffer_stream >> word;
 		if (word.length() == 0)
 			break ;
@@ -104,21 +86,28 @@ Request request_build(std::vector<char>& buffer)
 		std::transform(word.begin(), word.end(), word.begin(),
 			[](unsigned char c) { return std::tolower(c); });
 
-		std::string* value = get_value_from_key(request, word);
-		if (value == nullptr)
+		std::string key = word;
+		std::string value;
+		buffer_stream.get(); // skip the space
+		std::getline(buffer_stream, value);
+
+		// Field case insensitive
+		std::transform(value.begin(), value.end(), value.begin(),
+			[](unsigned char c) { return std::tolower(c); });
+
+		if (value.empty())
 		{
 			// Unknown key
 			std::getline(buffer_stream, word);
 			continue ;
 		}
-		buffer_stream.get(); // skip the space
-		std::getline(buffer_stream, *value);
-		// TODO: filter out '\r' '\n'
-		if (value->length() > 0)
-			value->erase(value->end() - 1);
-		// Field case insensitive
-		std::transform(value->begin(), value->end(), value->begin(),
-			[](unsigned char c) { return std::tolower(c); });
+
+		if (value.length() > 0 && value.back() == '\r')
+			value.erase(value.end() - 1);
+
+		// Add to fields
+		request.fields.emplace(key, value);
+
 	}
 	std::getline(buffer_stream, word);
 	
@@ -126,14 +115,6 @@ Request request_build(std::vector<char>& buffer)
 	ssize_t tg = buffer_stream.tellg();
 	if (tg > 0)
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
-	// else
-	// {
-	// 	std::cout << " BUFFER_STREAM.tellg <= 0: " << buffer_stream.str() << std::endl;
-	// 	return (request); // Invalid request
-	// }
-	// stored_buffer = buffer.substr(buffer_stream.tellg());
-	
-	// std::cout << "stored buffer: {" << stored_buffer << '}' << std::endl;
 
 	request.validity = VALID;
 	return (request);

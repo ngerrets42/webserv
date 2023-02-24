@@ -1,6 +1,5 @@
 #include "ShellSocket.h"
 #include "Command.h"
-#include "RequestHandler.h"
 #include "data.h"
 
 namespace webserv {
