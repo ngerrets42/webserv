@@ -281,13 +281,10 @@ void Connection::new_response(Socket& socket)
 			char * env_array[env.size() + 1];
 			convert_to_string_array(env_array, env);
 
-
 			std::vector<char*> exec_argv;
 
-			// exec_argv.push_back(strdup("/usr/local/bin/python3"));
-			// exec_argv.push_back(strdup("cgi-bin/upload_file.py"));
-			exec_argv.push_back(strdup("/usr/bin/php"));
-			exec_argv.push_back(strdup("cgi-bin/upload_file.php"));
+			exec_argv.push_back(strdup("/usr/local/bin/python3"));
+			exec_argv.push_back(strdup("cgi-bin/upload_file.py"));
 			exec_argv.push_back(NULL);
 
 			if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
@@ -320,6 +317,8 @@ void Connection::new_response(Socket& socket)
 				handler_data.custom_page.append(buff, read_size);
 			}
 			close(outputpipefd[0]);
+
+			// TODO: Read CGI-header and process
 
 			handler_data.custom_page.append("\r\n");
 			handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());

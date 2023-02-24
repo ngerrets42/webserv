@@ -3,6 +3,8 @@ import cgi, sys, os
 import cgitb; cgitb.enable()
 form = cgi.FieldStorage()
 
+print("content-type: text/html\n\n")
+
 message = None
 
 upload_dir = 'var/www/upload/'
