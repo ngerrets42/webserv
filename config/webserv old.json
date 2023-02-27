@@ -49,7 +49,12 @@
 				"/": {
 					"client_body_size": 10000,
 					"allowed_methods": ["GET", "POST", "DELETE"],
-					"root": "var/www/upload"
+					"root": "var/www/upload",
+					"CGI": {
+						".php": "/Users/ngerrets/.brew/bin/php-cgi",
+						".js": "/js",
+						".py": "python3"
+					}
 				}
 			}
 		}
