@@ -5,6 +5,7 @@
 
 # include "Request.h"
 # include "Response.h"
+# include "Server.h"
 
 namespace webserv {
 
@@ -21,11 +22,12 @@ class Connection
 		READING,
 		READY_TO_WRITE,
 		WRITING,
+		CGI,
 		CLOSE
 	};
 
 	public:
-	Connection(sockfd_t socket_fd, addr_t address);
+	Connection(sockfd_t connection_fd, addr_t address);
 	~Connection();
 
 	Request const& get_last_request(void) const;
@@ -52,6 +54,10 @@ class Connection
 	void continue_request(void);
 
 	void new_response(Socket& socket);
+	void new_response_get(Server const& server, Location const& loc);
+	void new_response_post(Server const& server, Location const& loc);
+	void cgi_pollin(void);
+	void cgi_pollout(void);
 	void continue_response(void);
 
 	Request build_request(std::string buffer);
@@ -74,7 +80,15 @@ class Connection
 		Response current_response;
 		std::string custom_page;
 		std::vector<char> buffer;
+		size_t content_size;
+		size_t received_size;
 		std::ifstream file;
+		int pid;
+		struct s_pipes
+		{
+			int in[2];
+			int out[2];
+		} pipes;
 	} handler_data;
 
 	public:

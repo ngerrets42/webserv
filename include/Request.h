@@ -37,8 +37,9 @@ struct Request
 void request_print(Request const& request, std::ostream& out = std::cout);
 RequestType get_request_type(std::string const& word);
 char const* get_request_string(RequestType type);
+void parse_header_fields(std::unordered_map<std::string, std::string>& fields, std::vector<char>& buffer, std::stringstream& buffer_stream);
 Request request_build(std::vector<char>& buffer);
 
-} // webserv
+} // namespace webserv
 
 #endif // REQUEST_H

@@ -1,6 +1,7 @@
 #include "Request.h"
 #include <algorithm>
 #include <cctype>
+#include <unordered_map>
 
 namespace webserv {
 
@@ -47,31 +48,9 @@ void request_print(Request const& request, std::ostream& out)
 	out << std::endl;
 }
 
-// This consumes the part of the buffer that's used
-Request request_build(std::vector<char>& buffer)
+void parse_header_fields(std::unordered_map<std::string, std::string>& fields, std::vector<char>& buffer, std::stringstream& buffer_stream)
 {
-	Request request;
-	if (buffer.empty())
-		return (request);
-
-	// Create a string-stream from the data
-	buffer.push_back(0); // null-termination
-	std::stringstream buffer_stream(buffer.data());
 	std::string word;
-
-	// First line of REQUEST
-	buffer_stream >> word;
-	request.type = get_request_type(word);
-	if (request.type == UNKNOWN) return (request); // Unsupported request
-	
-	buffer_stream >> request.path;
-	if (request.path.length() == 0) return (request); // No path
-	
-	buffer_stream >> request.http_version;
-	if (request.http_version.length() == 0) return (request); // No HTTP version
-	
-	std::getline(buffer_stream, word); // skip line
-
 	while (!buffer_stream.eof())
 	{
 		if (buffer_stream.peek() == '\r')
@@ -106,7 +85,7 @@ Request request_build(std::vector<char>& buffer)
 			value.erase(value.end() - 1);
 
 		// Add to fields
-		request.fields.emplace(key, value);
+		fields.emplace(key, value);
 
 	}
 	std::getline(buffer_stream, word);
@@ -115,6 +94,33 @@ Request request_build(std::vector<char>& buffer)
 	ssize_t tg = buffer_stream.tellg();
 	if (tg > 0)
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
+}
+
+// This consumes the part of the buffer that's used
+Request request_build(std::vector<char>& buffer)
+{
+	Request request;
+	if (buffer.empty())
+		return (request);
+
+	// Create a string-stream from the data
+	buffer.push_back(0); // null-termination
+	std::stringstream buffer_stream(buffer.data());
+	std::string word;
+
+	// First line of REQUEST
+	buffer_stream >> word;
+	request.type = get_request_type(word);
+	if (request.type == UNKNOWN) return (request); // Unsupported request
+	
+	buffer_stream >> request.path;
+	if (request.path.length() == 0) return (request); // No path
+	
+	buffer_stream >> request.http_version;
+	if (request.http_version.length() == 0) return (request); // No HTTP version
+	
+	std::getline(buffer_stream, word); // skip line
+	parse_header_fields(request.fields, buffer, buffer_stream);
 
 	request.validity = VALID;
 	return (request);
