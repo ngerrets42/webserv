@@ -40,7 +40,7 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 
 int main(int argc, char **argv)
 {
-	std::string config_path = "config/webserv.json";
+	std::string config_path = "/Users/hman/webserver/config/webserv.json";
 
 	if (argc > 1)
 		config_path = argv[1];
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 	bool run = true;
 	command_init(fd_map, run);
 	terminal_setup();
-
+std::cout << "test" << std::endl;
 	while (run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);

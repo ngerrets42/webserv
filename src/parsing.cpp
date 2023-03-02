@@ -58,7 +58,7 @@ static bool	simple_ip_format_check(std::string const & ip){
 	
 	int count_dot = 0;
 
-	for(int i = 0; i < ip.size(); ++i){
+	for(size_t i = 0; i < ip.size(); ++i){
 		if(ip[i] == '.' && count_dot < 3){
 			count_dot++;
 			continue;
@@ -73,7 +73,7 @@ static bool	simple_ip_format_check(std::string const & ip){
 }
 
 static bool is_all_digits(std::string const & str){
-	for(int i = 0; i < str.size(); ++i){
+	for(size_t i = 0; i < str.size(); ++i){
 		if(!std::isdigit(str[i])){
 			return false;
 		}
@@ -123,7 +123,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 			return false;
 		} else {
 			njson::Json::array& server_names = it->second->get<njson::Json::array>();
-			for(int i = 0; i < server_names.size(); ++i){
+			for(size_t i = 0; i < server_names.size(); ++i){
 				if(server_names[i]->get_type() != njson::Json::STRING){
 					return false;
 				} else {
@@ -222,7 +222,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 			return false;
 		} else {
 			njson::Json::array& allowed_http_commands = it->second->get<njson::Json::array>();
-			for(int i = 0; i < allowed_http_commands.size(); ++i){
+			for(size_t i = 0; i < allowed_http_commands.size(); ++i){
 				if(allowed_http_commands[i]->get_type() != njson::Json::STRING){
 					return false;
 				} else {
@@ -330,7 +330,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 			return false;
 		} else {
 			njson::Json::array& allowed_http_commands = it->second->get<njson::Json::array>();
-			for(int i = 0; i < allowed_http_commands.size(); ++i){
+			for(size_t i = 0; i < allowed_http_commands.size(); ++i){
 				if(allowed_http_commands[i]->get_type() != njson::Json::STRING){
 					return false;
 				} else {
@@ -416,9 +416,19 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
 {
 	std::vector<std::unique_ptr<Socket>> sockets;
+	std::set<int> ports_to_listen;
 
-	sockets.emplace_back(new Socket(8080));
-	sockets.emplace_back(new ShellSocket(6666));
+
+	for(size_t i = 0; i < servers.size(); ++i){
+		int server_port = servers[i]->port;
+		if(ports_to_listen.count(server_port) == 0){
+			ports_to_listen.insert(server_port);
+			sockets.emplace_back(new Socket(server_port));
+		}
+	}
+//	sockets.emplace_back(new Socket(8080));
+
+	//sockets.emplace_back(new ShellSocket(6666));
 	return (sockets);
 }
 
