@@ -69,7 +69,6 @@ int main(int argc, char **argv)
 	bool run = true;
 	command_init(fd_map, run);
 	terminal_setup();
-std::cout << "test" << std::endl;
 	while (run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);

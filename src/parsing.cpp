@@ -418,12 +418,20 @@ std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<S
 	std::vector<std::unique_ptr<Socket>> sockets;
 	std::set<int> ports_to_listen;
 
-
 	for(size_t i = 0; i < servers.size(); ++i){
 		int server_port = servers[i]->port;
 		if(ports_to_listen.count(server_port) == 0){
 			ports_to_listen.insert(server_port);
-			sockets.emplace_back(new Socket(server_port));
+			Socket * sock_serv = new Socket(server_port);
+			sock_serv->add_server_ref(servers[i]);
+			sockets.emplace_back(sock_serv);
+		} else {
+			for(size_t j = 0; j < sockets.size(); ++j){
+				if(sockets[j]->get_port() == server_port){
+					sockets[j]->add_server_ref(servers[i]);
+					break;
+				}
+			}
 		}
 	}
 //	sockets.emplace_back(new Socket(8080));
