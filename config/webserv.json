@@ -11,9 +11,9 @@
 
 	"servers": [
 		{
-			"listen": 4242,
+			"listen": 9000,
 			"host": "0.0.0.0",
-			"server_names": ["localhost:4242", "f1r4s15.codam.nl:4242"],
+			"server_names": ["localhost", "hello.com"],
 			"client_body_size": 1000,
 			"index": "",
 
@@ -37,12 +37,16 @@
 				},
 
 				"/images/folder/": {
+				},
+				"/pages/":{
+					"auto_index": true
 				}
+
 			}
 		},
 
 		{
-			"listen": 8000,
+			"listen": 9090,
 			"server_names": ["images.127.0.0.1", "images.localhost", "images.10.11.4.4", "images.example"],
 
 			"locations": {
