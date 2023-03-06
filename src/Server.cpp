@@ -12,12 +12,45 @@ Location::Location(std::string const & loc_path):path(loc_path){}
 
 Location::~Location(void){}
 
+//setters
+
 void Location::add_error_page(int error_code, std::string const & error_page){
 	error_pages[error_code] = error_page;
 }
 
 void Location::add_allowed_http_command(std::string const & http_command){
 	allowed_http_commands.push_back(http_command);
+}
+
+void Location::set_auto_index(bool autoindex_setting){
+	autoindex.first = true;
+	autoindex.second = autoindex_setting;
+}
+
+void Location::set_client_max_body_size(size_t body_size){
+	client_max_body_size.first = true;
+	client_max_body_size.second = body_size;
+}
+
+void Location::add_cgi_path(std::string const & cgi_ext, std::string const & cgi_ext_path){
+	cgi[cgi_ext] = cgi_ext_path;
+}
+
+void Location::set_upload_path(std::string const & upload_path){
+	upload_path_loc = upload_path;
+}
+
+
+//getters
+
+//the return is not const & because if the error page is not found it will return a empty string back that is local to this function
+std::string Location::get_error_page(int error_code) const{
+	std::unordered_map<int, std::string>::const_iterator it = error_pages.find(error_code);
+	if(it == error_pages.end()){
+		return (std::string());
+	} else {
+		return it->second;
+	}
 }
 
 bool Location::is_http_command_allowed(std::string const & http_command) const{
@@ -31,26 +64,22 @@ bool Location::is_http_command_allowed(std::string const & http_command) const{
 	}
 }
 
-void Location::set_auto_index(bool autoindex_setting){
-	autoindex.first = true;
-	autoindex.second = autoindex_setting;
-}
-
-void Location::set_client_max_body_size(size_t body_size){
-	client_max_body_size.first = true;
-	client_max_body_size.second = body_size;
-}
-
-
-//the return is not const & because if the error page is not found it will return a empty string back that is local to this function
-std::string Location::get_error_page(int error_code) const{
-	std::unordered_map<int, std::string>::const_iterator it = error_pages.find(error_code);
-	if(it == error_pages.end()){
-		return (std::string());
-	} else {
-		return it->second;
+std::string Location::get_cgi_path(std::string const & path){
+	if(cgi.empty()){
+		return std::string();
 	}
+	size_t position_dot = path.find_last_of('.');
+	if(position_dot == std::string::npos){
+		return std::string();
+	}
+	std::string extention = path.substr(position_dot,(path.size() - position_dot));
+	std::unordered_map<std::string, std::string>::const_iterator it = cgi.find(extention);
+	if (it != cgi.end()){
+		return cgi[extention];
+	}
+	return std::string();
 }
+
 //==============================================================================
 //Server class
 //==============================================================================

@@ -16,7 +16,9 @@ static bool check_directives_location_block(njson::Json::object& loc){
 		"allowed_methods",
 		"index",
 		"auto_index",
-		"redirect"});
+		"redirect",
+		"CGI",
+		"upload_path"});
 
 	njson::Json::object::iterator it;
 	for(it = loc.begin(); it != loc.end(); ++it){
@@ -298,6 +300,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 			}
 		}
 	}
+
 	//client_max_body_size
 	it = locationblock.find("client_body_size");
 	if(it != locationblock.end()){
@@ -323,6 +326,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 			loc.redirect = it->second->get<std::string>();
 		}
 	}
+
 	//allowed http commands
 	it = locationblock.find("allowed_methods");
 	if(it != locationblock.end()){
@@ -337,6 +341,34 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 					loc.add_allowed_http_command(allowed_http_commands[i]->get<std::string>());
 				}
 			}
+		}
+	}
+	
+	//setting CGI
+	it = locationblock.find("CGI");
+	if(it != locationblock.end()){
+		if(it->second->get_type() != njson::Json::OBJECT){
+			return false;
+		} else {
+			njson::Json::object& cgi = it->second->get<njson::Json::object>();
+			njson::Json::object::iterator cgiit;
+			for(cgiit = cgi.begin(); cgiit != cgi.end(); cgiit++){
+				if(cgiit->second->get_type() != njson::Json::STRING){
+					return false;
+				} else {
+					loc.add_cgi_path(cgiit->first, cgiit->second->get<std::string>());
+				}
+			}
+		}
+	}
+	
+	//setting upload_path
+	it = locationblock.find("upload_path");
+	if (it != locationblock.end()){
+		if (it->second->get_type() != njson::Json::STRING){
+			return false;
+		} else {
+			loc.upload_path_loc = it->second->get<std::string>();
 		}
 	}
 	return true;
@@ -434,9 +466,7 @@ std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<S
 			}
 		}
 	}
-//	sockets.emplace_back(new Socket(8080));
-
-	//sockets.emplace_back(new ShellSocket(6666));
+	sockets.emplace_back(new ShellSocket(6666));
 	return (sockets);
 }
 
