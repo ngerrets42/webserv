@@ -1,5 +1,4 @@
 #include "parsing.h"
-#include "ShellSocket.h"
 #include <algorithm>
 #include <memory>
 
@@ -92,8 +91,6 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
 {
 	std::vector<std::unique_ptr<Socket>> sockets;
-
-	sockets.emplace_back(new ShellSocket(6666));
 
 	for (auto& s : servers)
 	{
