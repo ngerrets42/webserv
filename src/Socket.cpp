@@ -130,7 +130,7 @@ void Socket::on_pollin(sockfd_t fd, Connection* connection)
 {
 	(void)fd;
 	std::cout << "event: POLLIN";
-	connection->on_pollin(*this);
+	connection->on_pollin(*this, fd);
 	std::cout << std::endl;
 }
 
@@ -138,7 +138,7 @@ void Socket::on_pollout(sockfd_t fd, Connection* connection)
 {
 	(void)fd;
 	std::cout << "event: POLLOUT";
-	connection->on_pollout(*this);
+	connection->on_pollout(*this, fd);
 	std::cout << std::endl;
 }
 
@@ -148,6 +148,11 @@ Connection const* Socket::get_connection(sockfd_t fd) const
 	if (it == connection_map.end())
 		return (nullptr);
 	return (it->second);
+}
+
+std::unordered_map<sockfd_t, Connection*>& Socket::get_connection_map(void)
+{
+	return (connection_map);
 }
 
 uint16_t Socket::get_port(void) const
@@ -187,9 +192,13 @@ Server& Socket::get_server(std::string const& host)
 {
 	if (servers.empty())
 		throw (std::runtime_error("Socket has no servers"));
+	std::string hostname = host;
+	size_t pos = hostname.find_last_of(':');
+	if (pos != std::string::npos)
+		hostname = hostname.substr(0, pos);
 	for (auto* s : servers)
 	{
-		if (s->contain_server_name(host))
+		if (s->contain_server_name(hostname))
 			return (*s);
 	}
 	return (*servers[0]);

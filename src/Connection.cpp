@@ -1,4 +1,5 @@
 #include "Connection.h"
+#include "Core.h"
 #include "Request.h"
 #include "Socket.h"
 #include "cgi.h"
@@ -47,25 +48,120 @@ std::string Connection::get_ip(void) const
 }
 
 // POLL
-void Connection::on_pollin(Socket& socket)
+void Connection::on_pollin(Socket& socket, sockfd_t fd)
 {
+	if (fd != socket_fd)
+	{
+		cgi_pollin();
+		return ;
+	}
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
 		case READY_TO_READ: new_request(); break;
 		case READING: continue_request(); break;
-		default: return;	
+		default: return;
 	}	
 }
 
-void Connection::on_pollout(Socket& socket)
+void Connection::on_pollout(Socket& socket, sockfd_t fd)
 {
+	if (fd != socket_fd)
+	{
+		cgi_pollout();
+		return ;
+	}
 	// Send response OR continue sending response
 	switch (state)
 	{
 		case READY_TO_WRITE: new_response(socket); break;
 		case WRITING: continue_response(); break;
 		default: return;
+	}
+}
+
+void Connection::new_request_post(void)
+{
+	//setting up the pipes
+	pipe(handler_data.pipes.in);
+	pipe(handler_data.pipes.out);
+
+	handler_data.pid = fork();
+	if(handler_data.pid < 0)
+	{
+		// TODO: fork error
+		// Fork unavailable, therefore server error
+		std::cerr << "fork not available: " << strerror(errno);
+		// Response builder should check pid and send error-page
+		return ;
+	}
+
+	// Child process directly turns into the CGI and becomes unavailable until completed
+	if(handler_data.pid == 0) // child process
+	{
+		// Handle handler_data.pipes
+		dup2(handler_data.pipes.in[0], STDIN_FILENO); close(handler_data.pipes.in[0]); close(handler_data.pipes.in[1]);
+		dup2(handler_data.pipes.out[1], STDOUT_FILENO); close(handler_data.pipes.out[1]); close(handler_data.pipes.out[0]);
+
+		// Build cgi-environment
+		std::vector<std::string> env = cgi::env_init();
+		cgi::env_set_value(env, "REMOTE_USER", "hman");
+		cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
+		cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
+		// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
+		cgi::env_set_value(env, "REQUEST_METHOD", "POST");
+
+		char* env_array[env.size() + 1];
+		cgi::env_to_string_array(env_array, env);
+
+		// Build argv
+		std::vector<char*> exec_argv;
+		std::string cgi_exec = "python3"; //loc.get_cgi(handler_data.current_request.path);
+
+		if (cgi_exec.empty())
+		{
+			// TODO: Error
+		}
+
+		exec_argv.push_back(strdup(cgi_exec.c_str()));
+		exec_argv.push_back(strdup("cgi-bin/handle_form.php"));
+		exec_argv.push_back(NULL);
+
+		// Actual execution
+		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
+		{
+			// TODO: Server error, send error-page (We are in child though, not that easy)
+			std::cerr << "execve: Error" << std::endl;
+			for (auto* p : exec_argv)
+				free(p);
+		}
+	}
+	
+	if (handler_data.pid > 0) //parent processs
+	{
+		fcntl(handler_data.pipes.in[1], F_SETFL, O_NONBLOCK);
+		fcntl(handler_data.pipes.out[0], F_SETFL, O_NONBLOCK);
+
+		close(handler_data.pipes.in[0]);
+
+		try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
+		catch (std::exception& e)
+		{
+			// TODO: Error-code & Close CGI
+			std::cerr << e.what() << std::endl;
+		}
+		handler_data.received_size = handler_data.buffer.size();
+		std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size;
+
+		if (handler_data.received_size >= handler_data.content_size)
+			// Already received everything
+			state = READY_TO_WRITE;
+
+		// TODO: SET READY TO WRITE TO CGI
+
+		//close(handler_data.pipes.in[1]);
+		
+		close(handler_data.pipes.out[1]);
 	}
 }
 
@@ -81,89 +177,9 @@ void Connection::new_request(void)
 
 	// Build the CGI
 	if (handler_data.current_request.type == POST)
-	{
-		//setting up the pipes
-		pipe(handler_data.pipes.in);
-		pipe(handler_data.pipes.out);
-
-		handler_data.pid = fork();
-		if(handler_data.pid < 0)
-		{
-			// Fork unavailable, therefore server error
-			std::cout << "fork not available: " << strerror(errno);
-			// Response builder should check pid and send error-page
-		}
-
-		// Child process directly turns into the CGI and becomes unavailable until completed
-		else if(handler_data.pid == 0) // child process
-		{
-			// Handle handler_data.pipes
-			dup2(handler_data.pipes.in[0], STDIN_FILENO); close(handler_data.pipes.in[0]); close(handler_data.pipes.in[1]);
-			dup2(handler_data.pipes.out[1], STDOUT_FILENO); close(handler_data.pipes.out[1]); close(handler_data.pipes.out[0]);
-
-			// Build cgi-environment
-			std::vector<std::string> env = cgi::env_init();
-			cgi::env_set_value(env, "REMOTE_USER", "hman");
-			cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
-			cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
-			// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-			cgi::env_set_value(env, "REQUEST_METHOD", "POST");
-
-			char* env_array[env.size() + 1];
-			cgi::env_to_string_array(env_array, env);
-
-			// Build argv
-			std::vector<char*> exec_argv;
-			exec_argv.push_back(strdup("/usr/bin/php"));
-			exec_argv.push_back(strdup("cgi-bin/handle_form.php"));
-			exec_argv.push_back(NULL);
-
-			// Actual execution
-			if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
-			{
-				// TODO: Server error, send error-page (We are in child though, not that easy)
-				std::cerr << "execve: Error" << std::endl;
-				for (auto* p : exec_argv)
-					free(p);
-			}
-		}
-		else if (handler_data.pid > 0) //parent processs
-		{
-			fcntl(handler_data.pipes.in[1], F_SETFL, O_NONBLOCK);
-			fcntl(handler_data.pipes.out[0], F_SETFL, O_NONBLOCK);
-
-			close(handler_data.pipes.in[0]);
-
-			try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
-			catch (std::exception& e)
-			{
-				// TODO: Error-code & Close CGI
-				std::cerr << e.what() << std::endl;
-			}
-
-			// Write body buffer to CGI
-			ssize_t write_size = write(handler_data.pipes.in[1], handler_data.buffer.data(), handler_data.buffer.size());
-			if (write_size != static_cast<ssize_t>(handler_data.buffer.size()))
-			{
-				// TODO: Error-code. Something went wrong, can't write full size
-				std::cerr << "Can't write full buffer to CGI";
-			}
-
-			//close(handler_data.pipes.in[1]);
-
-			handler_data.received_size = handler_data.buffer.size();
-			std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size;
-			
-			if (handler_data.received_size >= handler_data.content_size)
-				// Already received everything
-				state = READY_TO_WRITE;
-			
-			close(handler_data.pipes.out[1]);
-
-		}
-
-	}
-	else state = READY_TO_WRITE;
+		new_request_post();
+	else
+		state = READY_TO_WRITE;
 
 	// Set last_request for debugging purposes
 	last_request = handler_data.current_request;
@@ -184,19 +200,19 @@ void Connection::continue_request(void)
 
 	// Write to CGI
 	// std::cout << "Writing buffer to CGI: {" << (char*)handler_data.buffer.data() << "}" << std::endl;
-	ssize_t write_size = write(handler_data.pipes.in[1], handler_data.buffer.data(), handler_data.buffer.size());
-	if (write_size != static_cast<ssize_t>(handler_data.buffer.size()))
-	{
-		// TODO: Error-code. Something went wrong, can't write full size
-		std::cerr << "Can't write full buffer to CGI";
-	}
+	// ssize_t write_size = write(handler_data.pipes.in[1], handler_data.buffer.data(), handler_data.buffer.size());
+	// if (write_size != static_cast<ssize_t>(handler_data.buffer.size()))
+	// {
+	// 	// TODO: Error-code. Something went wrong, can't write full size
+	// 	std::cerr << "Can't write full buffer to CGI";
+	// }
 
-	if (state == CLOSE || handler_data.received_size >= handler_data.content_size)
-	{
-		// Close the pipe when we are done receiving and writing the full body
-		close(handler_data.pipes.in[1]);
-	}
-	else state = READY_TO_WRITE;
+	// if (state == CLOSE || handler_data.received_size >= handler_data.content_size)
+	// {
+	// 	// Close the pipe when we are done receiving and writing the full body
+	// 	close(handler_data.pipes.in[1]);
+	// }
+	// else state = READY_TO_WRITE;
 }
 
 static std::string content_type_from_ext(std::string const& path)
@@ -331,28 +347,34 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 void Connection::new_response_post(Server const& server, Location const& loc)
 {
 	// Read buffer from CGI-output
-	std::vector<char> buffer(MAX_SEND_BUFFER_SIZE);
-	ssize_t read_size = read(handler_data.pipes.out[0], buffer.data(), MAX_SEND_BUFFER_SIZE);
-	if (read_size < 0)
+	// std::vector<char> buffer(MAX_SEND_BUFFER_SIZE);
+	// ssize_t read_size = read(handler_data.pipes.out[0], buffer.data(), MAX_SEND_BUFFER_SIZE);
+	// if (read_size < 0)
+	// {
+	// 	std::cout << " cgi didn't output any data";
+	// 	state = READY_TO_WRITE;
+	// 	return ;
+	// }
+	// if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
+	// 	buffer.resize(read_size);
+
+	// handler_data.buffer = buffer;
+
+	// buffer.push_back('\0');
+
+	if (handler_data.buffer.empty())
 	{
-		std::cout << " cgi didn't output any data";
 		state = READY_TO_WRITE;
 		return ;
 	}
-	if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
-		buffer.resize(read_size);
-
-	handler_data.buffer = buffer;
-
-	buffer.push_back('\0');
 
 	handler_data.current_response.content_length = "0";
 	handler_data.current_response.content_type = "text/plain";
 
 	// parse into request
 	std::unordered_map<std::string, std::string> fields;
-	std::stringstream buffer_stream(buffer.data());
-	parse_header_fields(fields, buffer, buffer_stream);
+	std::stringstream buffer_stream(handler_data.buffer.data());
+	parse_header_fields(fields, handler_data.buffer, buffer_stream);
 
 	// TODO: read "Status" header-field
 
@@ -374,15 +396,15 @@ void Connection::continue_response(void)
 	if (handler_data.current_request.type == POST)
 	{
 		if (handler_data.buffer.empty())
-		{
-			handler_data.buffer.resize(MAX_SEND_BUFFER_SIZE);
-			ssize_t read_size = read(handler_data.pipes.out[0], handler_data.buffer.data(), MAX_SEND_BUFFER_SIZE);
-			if (read_size < 0)
-				handler_data.buffer.clear();
-			else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
-				handler_data.buffer.resize(read_size);
-		}
+			return ;
+
 		ssize_t send_data = data::send(socket_fd, handler_data.buffer);
+		if (send_data != handler_data.buffer.size())
+		{
+		// TODO: Error-code. Something went wrong, can't write full size
+		std::cerr << "Can't write full buffer to CGI";
+		}
+
 		handler_data.buffer.clear();
 
 		int wstatus;
@@ -412,6 +434,36 @@ void Connection::continue_response(void)
 		if (handler_data.current_request.fields["connection"] == "keep-alive")
 			state = READY_TO_READ;
 	}
+}
+
+void Connection::cgi_pollin(void)
+{
+	handler_data.buffer.resize(MAX_SEND_BUFFER_SIZE);
+	ssize_t read_size = read(handler_data.pipes.out[0], handler_data.buffer.data(), MAX_SEND_BUFFER_SIZE);
+	if (read_size < 0)
+		handler_data.buffer.clear();
+	else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
+		handler_data.buffer.resize(read_size);
+}
+
+void Connection::cgi_pollout(void)
+{
+	// Write body buffer to CGI
+	ssize_t write_size = write(handler_data.pipes.in[1], handler_data.buffer.data(), handler_data.buffer.size());
+	if (write_size != static_cast<ssize_t>(handler_data.buffer.size()))
+	{
+		// TODO: Error-code. Something went wrong, can't write full size
+		std::cerr << "Can't write full buffer to CGI";
+	}
+
+	if (state == CLOSE || handler_data.received_size >= handler_data.content_size)
+	{
+		// Close the pipe when we are done receiving and writing the full body
+		close(handler_data.pipes.in[1]);
+	}
+	else state = READY_TO_WRITE;
+
+	handler_data.buffer.clear();
 }
 
 } // namespace webserv

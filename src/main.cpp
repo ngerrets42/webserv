@@ -1,9 +1,11 @@
+#include "Core.h"
 #include "Server.h"
 #include "Command.h"
 #include "Socket.h"
 #include "parsing.h"
 #include <cstddef>
 #include <cstdlib>
+#include <unordered_map>
 
 #define TIMEOUT 1000
 
@@ -23,7 +25,7 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 {
 	std::vector<struct pollfd> fds;
 
-	for (const auto& pair : fd_map)
+	for (auto const& pair : fd_map)
 	{
 		if (!pair.second->is_active(pair.first)) // To make sure only relevant connections are polled (connections that are NOT busy)
 			continue ;
@@ -35,6 +37,7 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 			tmp.events |= POLLOUT;
 		fds.push_back(tmp);
 	}
+
 	return (fds);
 }
 

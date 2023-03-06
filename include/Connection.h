@@ -37,8 +37,8 @@ class Connection
 
 	State get_state(void) const;
 
-	void on_pollin(Socket& socket);
-	void on_pollout(Socket& socket);
+	void on_pollin(Socket& socket, sockfd_t fd);
+	void on_pollout(Socket& socket, sockfd_t fd);
 
 	private:
 	// unused constructors
@@ -51,6 +51,7 @@ class Connection
 	private:
 
 	void new_request(void);
+	void new_request_post(void);
 	void continue_request(void);
 
 	void new_response(Socket& socket);
@@ -81,6 +82,7 @@ class Connection
 		Response current_response;
 		std::string custom_page;
 		std::vector<char> buffer;
+		std::vector<char> cgi_buffer;
 		size_t content_size;
 		size_t received_size;
 		std::ifstream file;

@@ -27,6 +27,8 @@ class Socket
 
 	Connection const* get_connection(sockfd_t fd) const;
 
+	std::unordered_map<sockfd_t, Connection*>& get_connection_map(void);
+
 	uint16_t get_port(void) const;
 
 	Server& get_server(std::string const& host);
