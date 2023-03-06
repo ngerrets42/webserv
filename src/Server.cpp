@@ -64,7 +64,7 @@ bool Location::is_http_command_allowed(std::string const & http_command) const{
 	}
 }
 
-std::string Location::get_cgi_path(std::string const & path){
+std::string Location::get_cgi_path(std::string const & path) {
 	if(cgi.empty()){
 		return std::string();
 	}
@@ -228,6 +228,19 @@ std::string const &	Server::get_index_page(Location const & location) const{
 		return index;
 	} else {
 		return location.index;
+	}
+}
+
+std::string Server::get_cgi(Location & location, std::string const & path) const{
+	if(location.cgi.empty()){
+		return std::string();
+	} else {
+		std::string cgi_path = location.get_cgi_path(path);
+		if (cgi_path.empty()){
+			return std::string();
+		} else {
+			return cgi_path;
+		}
 	}
 }
 

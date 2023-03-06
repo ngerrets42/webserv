@@ -79,6 +79,7 @@ class Server{
 		size_t								get_client_max_body_size(Location const & location) const; //will return the client max body size for that location
 		bool								is_auto_index_on(Location const & location) const; //will return true autoindex for location is on
 		std::string const &					get_index_page(Location const & location) const; //will return the index page for the location
+		std::string 						get_cgi(Location & location, std::string const & path) const; //will return the path to the cgi binary or script
 };
 
 } //namespace webserv
