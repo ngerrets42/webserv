@@ -30,7 +30,7 @@ std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*>
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
 		tmp.events = POLLHUP | POLLIN;
-		Connection const * c = pair.second->get_connection(pair.first);
+		Connection const* c = pair.second->get_connection(pair.first);
 		if ((c != nullptr) && (c->get_state() == Connection::READY_TO_WRITE || c->get_state() == Connection::WRITING))
 			tmp.events |= POLLOUT;
 		fds.push_back(tmp);
@@ -68,7 +68,6 @@ int main(int argc, char **argv)
 
 	bool run = true;
 	command_init(fd_map, run);
-	terminal_setup();
 
 	while (run)
 	{

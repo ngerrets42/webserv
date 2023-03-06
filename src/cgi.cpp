@@ -7,21 +7,18 @@ namespace cgi
 
 	std::vector<std::string> env_init(void)
 	{
-		static std::string meta_vars[] = {
+		static std::vector<std::string> env = {
 			"AUTH_TYPE", "CONTENT_LENGTH", "CONTENT_TYPE", "GATEWAY_INTERFACE",
 			"PATH_INFO", "PATH_TRANSLATED", "QUERY_STRING", "REMOTE_ADDR",
 			"REMOTE_HOST", "REMOTE_IDENT", "REMOTE_USER", "REQUEST_METHOD",
-			"SCRIPT_NAME", "SERVER_NAME", "SERVER_PROTOCOL", "SERVER_SOFTWARE",
-			"SCRIPT_FILENAME"
+			"SCRIPT_NAME", "SERVER_NAME", "SERVER_PROTOCOL", "SERVER_SOFTWARE"
 		};
 
-		std::vector<std::string> env(sizeof(meta_vars));
-		for(auto& s : meta_vars)
-			env.push_back(s + "=");
+		for(auto& s : env) s += '=';
 		return (env);
 	}
 
-	bool	env_set_value(std::vector<std::string>& env, std::string const& var, std::string const& value)
+	bool env_set_value(std::vector<std::string>& env, std::string const& var, std::string const& value)
 	{
 		for(size_t i = 0; i < env.size(); i ++) {
 			if (env[i].substr(0,env[i].find('=')) == var)

@@ -1,18 +1,19 @@
 #include "Connection.h"
 #include "Request.h"
 #include "Socket.h"
+#include "cgi.h"
 #include "data.h"
 #include "html.h"
-#include "cgi.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <sstream>
 #include <sys/_types/_ssize_t.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <cstdlib>
+#include <unordered_map>
 
 namespace webserv {
 
@@ -105,7 +106,7 @@ void Connection::new_request(void)
 			cgi::env_set_value(env, "REMOTE_USER", "hman");
 			cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
 			cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
-			cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
+			// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
 			cgi::env_set_value(env, "REQUEST_METHOD", "POST");
 
 			char* env_array[env.size() + 1];
@@ -193,18 +194,28 @@ void Connection::continue_request(void)
 	if (state == CLOSE || handler_data.received_size >= handler_data.content_size)
 	{
 		// Close the pipe when we are done receiving and writing the full body
-		// close(handler_data.pipes.in[1]);
+		close(handler_data.pipes.in[1]);
 	}
 	else state = READY_TO_WRITE;
 }
 
-static std::string content_type_from_ext(std::string const& ext)
+static std::string content_type_from_ext(std::string const& path)
 {
-	if (ext == ".html")
-		return ("text/html");
-	if (ext == ".ico")
-		return "image/x-icon";
-	return ("text/plain");
+	static std::string const default_type("text/plain");
+	static std::unordered_map<std::string, std::string> const ext_type_map {
+		{"html", "text/html"},
+		{"ico", "image/x-icon"}
+	};
+
+	size_t pos = path.find_last_of('.');
+	if (pos != std::string::npos)
+	{
+		++pos;
+		if (pos >= path.length()) return (default_type);
+		auto it = ext_type_map.find(path.substr(pos));
+		if (it != ext_type_map.end()) return (it->second);
+	}
+	return (default_type);
 }
 
 // Response building
@@ -223,6 +234,7 @@ void Connection::new_response(Socket& socket)
 	{
 		case GET: new_response_get(server, loc); break;
 		case POST: new_response_post(server, loc); break;
+		case DELETE: new_response_delete(server, loc); break;
 		default: break; // TODO: error-page
 	}
 
@@ -244,11 +256,7 @@ void Connection::new_response(Socket& socket)
 			handler_data.file.open(fpath);
 			if (!handler_data.file)
 				handler_data.current_response.content_length.clear();
-			size_t pos = fpath.find_last_of('.');
-			if (pos != std::string::npos)
-				handler_data.current_response.content_type = content_type_from_ext(fpath.substr(pos));
-			else
-				handler_data.current_response.content_type = "text/plain";
+			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
 	}
 
@@ -300,22 +308,21 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 			handler_data.current_response.set_status_code("404");
 	}
 
+	// No custom page (index), so we have to get the file from fpath (or send 404 not found)
 	if (handler_data.custom_page.empty())
 	{
 		handler_data.current_response.content_length = std::to_string(
 			data::get_file_size(fpath));
 
+		// Open file, no file = 404
 		handler_data.file.open(fpath);
 		if (!handler_data.file)
 		{
 			handler_data.current_response.set_status_code("404");
 			handler_data.current_response.content_length.clear();
 		}
-		size_t pos = fpath.find_last_of('.');
-		if (pos != std::string::npos)
-			handler_data.current_response.content_type = content_type_from_ext(fpath.substr(pos));
-		else
-			handler_data.current_response.content_type = "text/plain";
+		// determine content type based on extention
+		handler_data.current_response.content_type = content_type_from_ext(fpath);
 	}
 
 	std::cout << ": " << fpath;
@@ -323,7 +330,7 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 
 void Connection::new_response_post(Server const& server, Location const& loc)
 {
-	// Read buffer from CGI
+	// Read buffer from CGI-output
 	std::vector<char> buffer(MAX_SEND_BUFFER_SIZE);
 	ssize_t read_size = read(handler_data.pipes.out[0], buffer.data(), MAX_SEND_BUFFER_SIZE);
 	if (read_size < 0)
@@ -357,6 +364,11 @@ void Connection::new_response_post(Server const& server, Location const& loc)
 		handler_data.current_response.content_length = std::to_string(handler_data.buffer.size());
 }
 
+void Connection::new_response_delete(Server const& server, Location const& loc)
+{
+
+}
+
 void Connection::continue_response(void)
 {
 	if (handler_data.current_request.type == POST)
@@ -377,6 +389,7 @@ void Connection::continue_response(void)
 		int rpid = waitpid(handler_data.pid, &wstatus, WNOHANG);
 		if (rpid <= 0)
 		{
+			close(handler_data.pipes.out[0]);
 			std::cout << ", CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 			state = CLOSE; // Close is default unless keep-alive
 			if (handler_data.current_request.fields["connection"] == "keep-alive")
@@ -386,7 +399,7 @@ void Connection::continue_response(void)
 	else if (!handler_data.custom_page.empty())
 	{
 		ssize_t send_data = data::send(socket_fd, handler_data.custom_page);
-		if (send_data != handler_data.custom_page.size())
+		if (static_cast<size_t>(send_data) != handler_data.custom_page.size())
 			std::cerr << "send_data of custom_page == " << send_data << std::endl;
 		state = CLOSE; // Close is default unless keep-alive
 		if (handler_data.current_request.fields["connection"] == "keep-alive")

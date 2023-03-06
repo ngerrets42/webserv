@@ -39,7 +39,6 @@ class Command
 	std::unordered_map<std::string, pointer> subcommands;
 };
 
-void terminal_setup(void);
 void command_init(std::unordered_map<sockfd_t, Socket*>& fd_map, bool& run);
 
 } // webserv

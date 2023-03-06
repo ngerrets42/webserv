@@ -56,6 +56,7 @@ class Connection
 	void new_response(Socket& socket);
 	void new_response_get(Server const& server, Location const& loc);
 	void new_response_post(Server const& server, Location const& loc);
+	void new_response_delete(Server const& server, Location const& loc);
 	void cgi_pollin(void);
 	void cgi_pollout(void);
 	void continue_response(void);
