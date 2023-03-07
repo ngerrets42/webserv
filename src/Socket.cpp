@@ -1,7 +1,8 @@
 #include "Socket.h"
-
+#include "Connection.h"
 #include <memory>
 #include <stdexcept>
+#include <sys/socket.h>
 
 namespace webserv {
 
@@ -56,8 +57,6 @@ Socket::Socket(uint16_t _port) : port(_port)
 
 Socket::~Socket()
 {
-	for (auto& pair : connection_map)
-		delete pair.second;
 	close(socket_fd);
 }
 
@@ -66,106 +65,26 @@ Socket::Socket() : socket_fd(-1) {};
 Socket::Socket(Socket const& other) { (void)other; }
 Socket& Socket::operator=(Socket const& other) { (void)other; return *this; }
 
-void Socket::notify(sockfd_t fd, short revents, std::unordered_map<sockfd_t, Socket*>& fd_map)
+// POLLING
+void Socket::on_pollhup(pollable_map_t& fd_map) { (void)fd_map; }
+
+void Socket::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout << "Notify {fd: " << fd << ", socket: " << socket_fd << "}, ";
-
-	if (fd == socket_fd)
-	{
-		if ((revents & POLLERR) != 0)
-		{
-			// error on socket??
-			std::cout << "event: POLLERR" << std::endl;
-			throw (std::runtime_error(std::string("POLLERR {socket:" + std::to_string(socket_fd) + "}")));
-		}
-		if ((revents & POLLIN) != 0)
-		{
-			std::cout << "event: POLLIN";
-			accept_connections(fd_map);
-		}
-		return ;
-	}
-
-	auto it = connection_map.find(fd);
-	if (it == connection_map.end())
-	{
-		// unknown fd
-		fd_map.erase(fd);
-		// throw (std::runtime_error(std::string("sockfd not in connection_map {socket:" + std::to_string(socket_fd) + "}")));
-	}
-
-	if ((revents & POLLERR) != 0)
-	{
-		// received ERR, destroy connection
-		std::cout << "event: POLLERR" << std::endl;
-		delete it->second;
-		connection_map.erase(it);
-		// update fd_map
-		fd_map.erase(fd);
-		return ;
-	}
-	if ((revents & POLLHUP) != 0)
-	{
-		std::cout << "event: POLLHUP" << std::endl;
-		delete it->second;
-		connection_map.erase(it);
-		fd_map.erase(fd);
-		return ;
-	}
-	if ((revents & POLLIN) != 0)
-		on_pollin(it->first, it->second); // A new REQUEST is coming in on this connection
-	else if ((revents & POLLOUT) != 0)
-		on_pollout(it->first, it->second);
-	
-	// Close connections that need to close
-	if (it->second->get_state() == Connection::CLOSE)
-	{
-		delete it->second;
-		connection_map.erase(it);
-		fd_map.erase(fd);
-	}
-}
-
-void Socket::on_pollin(sockfd_t fd, Connection* connection)
-{
-	(void)fd;
 	std::cout << "event: POLLIN";
-	connection->on_pollin(*this);
-	std::cout << std::endl;
+	accept_connections(fd_map);
 }
 
-void Socket::on_pollout(sockfd_t fd, Connection* connection)
+void Socket::on_pollout(pollable_map_t& fd_map) { (void)fd_map; }
+
+short Socket::get_events(sockfd_t fd) const
 {
 	(void)fd;
-	std::cout << "event: POLLOUT";
-	connection->on_pollout(*this);
-	std::cout << std::endl;
+	return (POLLIN);
 }
 
-Connection const* Socket::get_connection(sockfd_t fd) const
-{
-	auto it = connection_map.find(fd);
-	if (it == connection_map.end())
-		return (nullptr);
-	return (it->second);
-}
+uint16_t Socket::get_port(void) const { return port; }
 
-uint16_t Socket::get_port(void) const
-{
-	return port;
-}
-
-bool Socket::is_active(sockfd_t fd) const
-{
-	if (fd == socket_fd)
-		return (true);
-	auto it = connection_map.find(fd);
-	if (it == connection_map.end())
-		return (false);
-	return (!connection_map.at(fd)->busy);
-}
-
-void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
+void Socket::accept_connections(pollable_map_t& fd_map)
 {
 	// new CONNECTIONs are coming in
 	addr_t accepted_address = {};
@@ -174,11 +93,10 @@ void Socket::accept_connections(std::unordered_map<sockfd_t, Socket*>& fd_map)
 	while ((connection_fd = accept(socket_fd, &accepted_address, &accepted_address_length)) > 0)
 	{
 		std::cout << ", accepted: " << connection_fd;
-		Connection* c = new Connection(connection_fd, accepted_address);
+		Connection* c = new Connection(connection_fd, accepted_address, this);
 
-		// Add to connections AND to the fd_map for poll()
-		connection_map.emplace(connection_fd, c);
-		fd_map.emplace(connection_fd, this);
+		// Add to the fd_map for poll()
+		fd_map.emplace(connection_fd, c);
 	}
 	std::cout << std::endl;
 }
@@ -187,9 +105,13 @@ Server& Socket::get_server(std::string const& host)
 {
 	if (servers.empty())
 		throw (std::runtime_error("Socket has no servers"));
+	std::string hostname = host;
+	size_t pos = hostname.find_last_of(':');
+	if (pos != std::string::npos)
+		hostname = hostname.substr(0, pos);
 	for (auto* s : servers)
 	{
-		if (s->contain_server_name(host))
+		if (s->contain_server_name(hostname))
 			return (*s);
 	}
 	return (*servers[0]);
@@ -200,7 +122,7 @@ void Socket::add_server_ref(std::unique_ptr<Server>& server_ref)
 	servers.push_back(server_ref.get());
 }
 
-sockfd_t Socket::get_socket_fd(void) const { return socket_fd; }
+sockfd_t Socket::get_fd(void) const { return socket_fd; }
 
 
 } // namespace webserv

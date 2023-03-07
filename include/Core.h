@@ -22,6 +22,8 @@
 
 namespace webserv {
 
+	#define MAX_SEND_BUFFER_SIZE 8192
+
 	typedef int sockfd_t;
 	typedef struct sockaddr addr_t;
 	typedef struct sockaddr_in addr_in_t;

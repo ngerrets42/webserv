@@ -1,40 +1,39 @@
+#include "Core.h"
 #include "Server.h"
 #include "Command.h"
 #include "Socket.h"
 #include "parsing.h"
 #include <cstddef>
 #include <cstdlib>
+#include <memory>
+#include <unordered_map>
 
 #define TIMEOUT 1000
 
 using namespace webserv;
 
-static std::unordered_map<sockfd_t, Socket*> build_map(std::vector<std::unique_ptr<Socket>>& sockets)
+static pollable_map_t build_map(std::vector<std::unique_ptr<Socket>>& sockets)
 {
-	std::unordered_map<sockfd_t, Socket*> fd_map(sockets.size());
+	pollable_map_t fd_map(sockets.size());
 
 	for (auto& s : sockets)
-		fd_map.insert({s->get_socket_fd(), s.get()});
+		fd_map.insert({s->get_fd(), s.get()});
 
 	return (fd_map);
 }
 
-std::vector<struct pollfd> get_descriptors(std::unordered_map<sockfd_t, Socket*> const& fd_map)
+std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 {
 	std::vector<struct pollfd> fds;
 
-	for (const auto& pair : fd_map)
+	for (auto const& pair : fd_map)
 	{
-		if (!pair.second->is_active(pair.first)) // To make sure only relevant connections are polled (connections that are NOT busy)
-			continue ;
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
-		tmp.events = POLLHUP | POLLIN;
-		Connection const * c = pair.second->get_connection(pair.first);
-		if ((c != nullptr) && (c->get_state() == Connection::READY_TO_WRITE || c->get_state() == Connection::WRITING))
-			tmp.events |= POLLOUT;
+		tmp.events = pair.second->get_events(pair.first);
 		fds.push_back(tmp);
 	}
+
 	return (fds);
 }
 
@@ -64,11 +63,16 @@ int main(int argc, char **argv)
 		return (EXIT_FAILURE);
 
 	std::vector<std::unique_ptr<Socket>> sockets = build_sockets(servers);
-	std::unordered_map<sockfd_t, Socket*> fd_map = build_map(sockets);
+	pollable_map_t fd_map = build_map(sockets);
 
 	bool run = true;
+<<<<<<< HEAD
 	command_init(fd_map, run);
 	terminal_setup();
+=======
+	// command_init(fd_map, run);
+
+>>>>>>> main
 	while (run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);
@@ -82,7 +86,7 @@ int main(int argc, char **argv)
 		{
 			if (pfd.revents != 0)
 				// Notify the connection/socket that a new event needs to be handled
-				fd_map.at(pfd.fd)->notify(pfd.fd, pfd.revents, fd_map);
+				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map);
 		}
 	}
 

@@ -466,7 +466,7 @@ std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<S
 			}
 		}
 	}
-	sockets.emplace_back(new ShellSocket(6666));
+	// sockets.emplace_back(new ShellSocket(6666));
 	return (sockets);
 }
 
