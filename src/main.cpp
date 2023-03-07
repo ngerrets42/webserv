@@ -66,13 +66,8 @@ int main(int argc, char **argv)
 	pollable_map_t fd_map = build_map(sockets);
 
 	bool run = true;
-<<<<<<< HEAD
-	command_init(fd_map, run);
-	terminal_setup();
-=======
 	// command_init(fd_map, run);
 
->>>>>>> main
 	while (run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);
