@@ -29,8 +29,7 @@
 				"/": {
 					"allowed_methods": ["GET"],
 					"root": "var/www/html",
-					"index": "index.html",
-					"auto_index": true
+					"index": ""
 				},
 				"/images/": {
 					"auto_index": true
@@ -49,11 +48,16 @@
 			"listen": 9090,
 			"server_names": ["images.127.0.0.1", "images.localhost", "images.10.11.4.4", "images.example"],
 
+			"error_pages": {
+				"404": "404.html"
+			},
+
 			"locations": {
 				"/": {
 					"client_body_size": 10000,
 					"allowed_methods": ["GET", "POST", "DELETE"],
-					"root": "var/www/upload"
+					"root": "var/www/upload",
+					"auto_index": false
 				}
 			}
 		}

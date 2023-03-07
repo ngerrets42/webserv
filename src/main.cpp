@@ -39,7 +39,7 @@ std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 
 int main(int argc, char **argv)
 {
-	std::string config_path = "/Users/hman/webserver/config/webserv.json";
+	std::string config_path = "config/webserv.json";
 
 	if (argc > 1)
 		config_path = argv[1];

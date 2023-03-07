@@ -227,25 +227,36 @@ void Connection::new_response(void)
 	{
 		std::cout << ": ERROR " << handler_data.current_response.status_code;
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
+		
+		std::cout << " PATH " << error_path << "; ";
+
 		handler_data.current_response.content_length.clear();
 		if (!error_path.empty())
 		{
 			std::string fpath = server.get_root(loc) + '/' + error_path;
+
+			std::cout << " FPATH " << fpath << "; ";
 			handler_data.current_response.content_length = std::to_string(
 			data::get_file_size(fpath));
 
-			handler_data.file.open(fpath);
+			std::cout << " CONTENT_LENGTH " << handler_data.current_response.content_length << "; ";
+			handler_data.file.open(fpath, std::ios_base::binary);
 			if (!handler_data.file)
-				handler_data.current_response.content_length.clear();
+			{
+				std::cout << " open failed; " << std::endl;
+				handler_data.current_response.content_length = "0";
+			}
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
 	}
 
 	// Add final headers
-	// 	handler_data.current_response.content_length = "0";
 
 	if (!handler_data.current_response.content_length.empty())
 		handler_data.current_response.add_http_header("content-length", handler_data.current_response.content_length);
+
+	// if (handler_data.current_response.content_length.empty() && handler_data.current_request.fields["connection"] == "keep-alive")
+	// 	handler_data.current_request.fields["connection"] = "close";
 
 	if (handler_data.current_request.fields["connection"] == "keep-alive")
 		handler_data.current_response.add_http_header("connection", "keep-alive");
