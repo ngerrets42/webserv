@@ -70,7 +70,6 @@ void Socket::on_pollhup(pollable_map_t& fd_map) { (void)fd_map; }
 
 void Socket::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout << "event: POLLIN";
 	accept_connections(fd_map);
 }
 
@@ -90,10 +89,12 @@ void Socket::accept_connections(pollable_map_t& fd_map)
 	addr_t accepted_address = {};
 	socklen_t accepted_address_length = sizeof(addr_t);
 	sockfd_t connection_fd = 0;
+
+	std::cout << "Socket (" << socket_fd << ")\n";
 	while ((connection_fd = accept(socket_fd, &accepted_address, &accepted_address_length)) > 0)
 	{
-		std::cout << ", accepted: " << connection_fd;
 		Connection* c = new Connection(connection_fd, accepted_address, this);
+		std::cout << "- accepted: " << connection_fd << ", ip: " << c->get_ip() << '\n';
 
 		// Add to the fd_map for poll()
 		fd_map.emplace(connection_fd, c);
