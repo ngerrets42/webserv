@@ -1,8 +1,8 @@
 #include "Core.h"
 #include "Server.h"
-#include "Command.h"
 #include "Socket.h"
 #include "parsing.h"
+#include <csignal>
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
@@ -23,7 +23,7 @@ static pollable_map_t build_map(std::vector<std::unique_ptr<Socket>>& sockets)
 	return (fd_map);
 }
 
-std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
+static std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 {
 	std::vector<struct pollfd> fds;
 
@@ -38,67 +38,11 @@ std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 	return (fds);
 }
 
-#include <csignal>
-
+static bool s_run = true;
 int main(int argc, char **argv)
 {
-	std::signal(SIGINT, [](int i){
-		std::cout << i << " SIGINT" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGHUP, [](int i){
-		std::cout << i << " SIGHUP" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGABRT, [](int i){
-		std::cout << i << " SIGABRT" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGPIPE, [](int i){
-		std::cout << i << " SIGPIPE" << std::endl;
-	});
-
-	std::signal(SIGTERM, [](int i){
-		std::cout << i << " SIGTERM" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGIO, [](int i){
-		std::cout << i << " SIGIO" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGURG, [](int i){
-		std::cout << i << " SIGURG" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGTRAP, [](int i){
-		std::cout << i << " SIGTRAP" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGKILL, [](int i){
-		std::cout << i << " SIGKILL" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGILL, [](int i){
-		std::cout << i << " SIGILL" << std::endl;
-		exit(1);
-	});
-
-	std::signal(SIGQUIT, [](int i){
-		std::cout << i << " SIGQUIT" << std::endl;
-		exit(1);
-	});
-
-	std::atexit([](){
-		system("leaks -q webserv");
-	});
+	(void)std::atexit([]() { system("leaks -q webserv"); });
+	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
 
 	std::string config_path = "config/webserv.json";
 
@@ -126,10 +70,9 @@ int main(int argc, char **argv)
 	std::vector<std::unique_ptr<Socket>> sockets = build_sockets(servers);
 	pollable_map_t fd_map = build_map(sockets);
 
-	bool run = true;
-	// command_init(fd_map, run);
+	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });
 
-	while (run)
+	while (s_run)
 	{
 		std::vector<struct pollfd> fds = get_descriptors(fd_map);
 
@@ -141,11 +84,11 @@ int main(int argc, char **argv)
 		for (struct pollfd& pfd : fds)
 		{
 			if (pfd.revents != 0)
-				// Notify the connection/socket that a new event needs to be handled
+				// Notify the connection/socket/cgi that a new event needs to be handled
 				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map);
 		}
 	}
 
-	std::cout << "Bye!" << std::endl;
+	std::cout << "losing webserv^\nBye!" << std::endl;
 	return (EXIT_SUCCESS);
 }

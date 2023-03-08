@@ -70,14 +70,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		dup2(pipes.in[0], STDIN_FILENO); close(pipes.in[0]); close(pipes.in[1]);
 		dup2(pipes.out[1], STDOUT_FILENO); close(pipes.out[1]); close(pipes.out[0]);
 
-		// Build cgi-environment
-		// std::vector<std::string> env = cgi::env_init();
-		// cgi::env_set_value(env, "REMOTE_USER", "hman");
-		// cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
-		// cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
-		// // cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-		// cgi::env_set_value(env, "REQUEST_METHOD", "POST");
-
+		// Build char** out of array
 		char* env_array[env.size() + 1];
 		env::to_string_array(env_array, env);
 
@@ -90,6 +83,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 			// TODO: Error
 		}
 
+		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
 		exec_argv.push_back(strdup("cgi-bin/upload_file.py"));
 		exec_argv.push_back(NULL);
@@ -109,10 +103,6 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		fcntl(pipes.out[0], F_SETFL, O_NONBLOCK);
 
 		close(pipes.in[0]);
-
-		// TODO: SET READY TO WRITE TO CGI
-
-		//close(handler_data.pipes.in[1]);
 		close(pipes.out[1]);
 	}
 }
@@ -188,7 +178,7 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
-	std::cout << "CGi-POLLHUP";
+	std::cout << "CGI-POLLHUP";
 }
 
 } // namespace webserv
