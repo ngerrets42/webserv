@@ -95,12 +95,12 @@ short Connection::get_events(sockfd_t fd) const
 void Connection::new_request_post(pollable_map_t& fd_map)
 {
 	// Build cgi-environment
-	std::vector<std::string> env = cgi::env_init();
+	std::vector<std::string> env = env::initialize();
 	// cgi::env_set_value(env, "REMOTE_USER", "hman");
-	cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
-	cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
+	env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
+	env::set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
 	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-	cgi::env_set_value(env, "REQUEST_METHOD", "POST");
+	env::set_value(env, "REQUEST_METHOD", "POST");
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = serv.get_location(handler_data.current_request.path);

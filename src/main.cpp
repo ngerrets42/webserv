@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
+#include <sys/signal.h>
 #include <unordered_map>
 
 #define TIMEOUT 1000
@@ -37,8 +38,68 @@ std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 	return (fds);
 }
 
+#include <csignal>
+
 int main(int argc, char **argv)
 {
+	std::signal(SIGINT, [](int i){
+		std::cout << i << " SIGINT" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGHUP, [](int i){
+		std::cout << i << " SIGHUP" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGABRT, [](int i){
+		std::cout << i << " SIGABRT" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGPIPE, [](int i){
+		std::cout << i << " SIGPIPE" << std::endl;
+	});
+
+	std::signal(SIGTERM, [](int i){
+		std::cout << i << " SIGTERM" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGIO, [](int i){
+		std::cout << i << " SIGIO" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGURG, [](int i){
+		std::cout << i << " SIGURG" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGTRAP, [](int i){
+		std::cout << i << " SIGTRAP" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGKILL, [](int i){
+		std::cout << i << " SIGKILL" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGILL, [](int i){
+		std::cout << i << " SIGILL" << std::endl;
+		exit(1);
+	});
+
+	std::signal(SIGQUIT, [](int i){
+		std::cout << i << " SIGQUIT" << std::endl;
+		exit(1);
+	});
+
+	std::atexit([](){
+		system("leaks -q webserv");
+	});
+
 	std::string config_path = "config/webserv.json";
 
 	if (argc > 1)

@@ -2,10 +2,10 @@
 
 namespace webserv {
 
-namespace cgi
+namespace env
 {
 
-	std::vector<std::string> env_init(void)
+	std::vector<std::string> initialize(void)
 	{
 		static std::vector<std::string> env = {
 			"AUTH_TYPE", "CONTENT_LENGTH", "CONTENT_TYPE", "GATEWAY_INTERFACE",
@@ -18,7 +18,7 @@ namespace cgi
 		return (env);
 	}
 
-	bool env_set_value(std::vector<std::string>& env, std::string const& var, std::string const& value)
+	bool set_value(std::vector<std::string>& env, std::string const& var, std::string const& value)
 	{
 		for(size_t i = 0; i < env.size(); i ++) {
 			if (env[i].substr(0,env[i].find('=')) == var)
@@ -30,7 +30,7 @@ namespace cgi
 		return false;
 	}
 
-	void env_to_string_array(char ** env_array, std::vector<std::string> &env)
+	void to_string_array(char ** env_array, std::vector<std::string> &env)
 	{
 		for(size_t i = 0; i < env.size(); i++)
 		{
@@ -39,13 +39,13 @@ namespace cgi
 		env_array[env.size()] = NULL;
 	}
 
-	void env_print(std::vector<std::string> const& env){
+	void print(std::vector<std::string> const& env){
 		for(size_t i = 0; i < env.size(); i++) {
 			std::cout << env[i] << std::endl;
 		}
 	}
 
-} // namespace cgi
+} // namespace env
 
 CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 {
@@ -79,7 +79,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		// cgi::env_set_value(env, "REQUEST_METHOD", "POST");
 
 		char* env_array[env.size() + 1];
-		cgi::env_to_string_array(env_array, env);
+		env::to_string_array(env_array, env);
 
 		// Build argv
 		std::vector<char*> exec_argv;
@@ -103,8 +103,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 				free(p);
 		}
 	}
-	
-	if (pid > 0) //parent processs
+	if (pid > 0) //parent process
 	{
 		fcntl(pipes.in[1], F_SETFL, O_NONBLOCK);
 		fcntl(pipes.out[0], F_SETFL, O_NONBLOCK);
@@ -114,7 +113,6 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		// TODO: SET READY TO WRITE TO CGI
 
 		//close(handler_data.pipes.in[1]);
-		
 		close(pipes.out[1]);
 	}
 }

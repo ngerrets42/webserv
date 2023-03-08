@@ -7,13 +7,13 @@
 
 namespace webserv {
 
-	namespace cgi
+	namespace env
 	{
-		std::vector<std::string> env_init(void);
-		bool env_set_value(std::vector<std::string>& env, std::string const& var, std::string const& value);
-		void env_to_string_array(char ** env_array, std::vector<std::string> &env);
-		void env_print(std::vector<std::string> const& env);
-	} // namespace cgi
+		std::vector<std::string> initialize(void);
+		bool set_value(std::vector<std::string>& env, std::string const& var, std::string const& value);
+		void to_string_array(char ** env_array, std::vector<std::string> &env);
+		void print(std::vector<std::string> const& env);
+	} // namespace env
 
 	class CGI : public Pollable
 	{
