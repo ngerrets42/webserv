@@ -29,7 +29,11 @@
 				"/": {
 					"allowed_methods": ["GET"],
 					"root": "var/www/html",
-					"index": ""
+					"index": "",
+					"auto_index": true,
+					"CGI": {
+						".py": "hello there"
+					}
 				},
 				"/images/": {
 					"auto_index": true
@@ -40,7 +44,6 @@
 				"/pages/":{
 					"auto_index": true
 				}
-
 			}
 		},
 

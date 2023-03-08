@@ -92,25 +92,35 @@ short Connection::get_events(sockfd_t fd) const
 	return (events);
 }
 
-void Connection::new_request_post(pollable_map_t& fd_map)
+void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	// Build cgi-environment
 	std::vector<std::string> env = env::initialize();
 	// cgi::env_set_value(env, "REMOTE_USER", "hman");
-	env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
+	if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
+		env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
 	env::set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
 	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-	env::set_value(env, "REQUEST_METHOD", "POST");
+	if (handler_data.current_request.type == POST)
+		env::set_value(env, "REQUEST_METHOD", "POST");
+	else
+		env::set_value(env, "REQUEST_METHOD", "GET");
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = serv.get_location(handler_data.current_request.path);
-	handler_data.cgi = new CGI(env, serv, loc);
+	handler_data.cgi = new CGI(env, serv, loc, handler_data.current_request.path);
 
 	handler_data.cgi->buffer_in = handler_data.buffer; // Push leftover buffer into the CGI buffer
 	handler_data.cgi->buffer_in.pop_back();
 
 	fd_map.insert({handler_data.cgi->get_in_fd(), handler_data.cgi});
 	fd_map.insert({handler_data.cgi->get_out_fd(), handler_data.cgi});
+
+	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
+	{
+		state = READY_TO_WRITE;
+		return ;
+	}
 
 	try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
 	catch (std::exception& e)
@@ -131,6 +141,8 @@ void Connection::new_request(pollable_map_t& fd_map)
 {
 	state = READING;
 	handler_data = HandlerData();
+	handler_data.current_response = Response();
+
 	handler_data.buffer = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&]{
 		this->state = CLOSE;
 	});
@@ -142,9 +154,23 @@ void Connection::new_request(pollable_map_t& fd_map)
 	// check HTTP version (return 505 if not HTTP\0.9, HTTP\1.0 or HTTP\1.1)
 	// check valid method (501 if not GET, POST or DELETE; 405 if not allowed)
 
+	Server& server = parent->get_server(handler_data.current_request.fields["host"]);
+	Location loc = server.get_location(handler_data.current_request.path);
+
 	// Build the CGI
-	if (handler_data.current_request.type == POST)
-		new_request_post(fd_map);
+	std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
+	std::cout << "path: " << handler_data.current_request.path << " cgi-string: " << cgi << std::endl;
+	if (!cgi.empty())
+	{
+		cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
+		if (data::get_file_size(cgi) == 0)
+		{
+			handler_data.current_response.set_status_code("404");
+			state = READY_TO_WRITE;
+		}
+		else
+			new_request_cgi(fd_map);
+	}
 	else
 		state = READY_TO_WRITE;
 
@@ -217,21 +243,22 @@ static std::string content_type_from_ext(std::string const& path)
 void Connection::new_response(void)
 {
 	state = WRITING;
-	handler_data.current_response = Response();
 
 	// Get the Server from host
 	Socket& socket = *parent;
 	Server& server = socket.get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
 	
-	handler_data.current_response.set_status_code("200");
-
-	switch (handler_data.current_request.type)
+	if (handler_data.current_response.status_code.empty())
+		handler_data.current_response.set_status_code("200");
+	if (handler_data.current_request.type == DELETE)
+		new_response_delete(server, loc);
+	else
 	{
-		case GET: new_response_get(server, loc); break;
-		case POST: new_response_post(server, loc); break;
-		case DELETE: new_response_delete(server, loc); break;
-		default: break; // TODO: error-page
+		if (handler_data.cgi != nullptr)
+			new_response_cgi(server, loc);
+		else
+			new_response_get(server, loc);
 	}
 
 	if (state == READY_TO_WRITE)
@@ -333,13 +360,14 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	}
 }
 
-void Connection::new_response_post(Server const& server, Location const& loc)
+void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
 	if (handler_data.cgi->buffer_out.empty())
 	{
 		state = READY_TO_WRITE;
 		return ;
 	}
+	std::cout << "Connection::new_response_cgi" << std::endl;
 
 	handler_data.current_response.content_type = "text/plain";
 
@@ -372,7 +400,7 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 
 void Connection::continue_response(pollable_map_t& fd_map)
 {
-	if (handler_data.current_request.type == POST)
+	if (handler_data.cgi != nullptr)
 	{
 		if (handler_data.cgi->buffer_out.empty())
 			return ;

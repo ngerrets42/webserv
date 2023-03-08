@@ -18,7 +18,7 @@ namespace webserv {
 	class CGI : public Pollable
 	{
 		public:
-		CGI(std::vector<std::string>& env, Server& server, Location& loc);
+		CGI(std::vector<std::string>& env, Server& server, Location& loc, std::string const& path);
 		virtual ~CGI();
 
 		virtual sockfd_t get_fd(void) const override;

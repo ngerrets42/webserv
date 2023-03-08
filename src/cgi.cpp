@@ -1,4 +1,5 @@
 #include "CGI.h"
+#include <unistd.h>
 
 namespace webserv {
 
@@ -47,8 +48,9 @@ namespace env
 
 } // namespace env
 
-CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
+CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::string const& path)
 {
+	std::cout << "Lauching new CGI" << std::endl;
 	//setting up the pipes
 	pipe(pipes.in);
 	pipe(pipes.out);
@@ -76,25 +78,23 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 
 		// Build argv
 		std::vector<char*> exec_argv;
-		std::string cgi_exec = "/usr/local/bin/python3"; //server.get_cgi(handler_data.current_request.path, loc);
-
-		if (cgi_exec.empty())
-		{
-			// TODO: Error
-		}
+		std::string cgi_exec = server.get_root(loc) + "/" + path;//server.get_cgi(loc, path);
 
 		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
-		exec_argv.push_back(strdup("cgi-bin/upload_file.py"));
 		exec_argv.push_back(NULL);
 
 		// Actual execution
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
 			// TODO: Server error, send error-page (We are in child though, not that easy)
+
+			std::string status = "status: 500 Internal Server Error\r\n";
+			std::cout << status << std::endl;
 			std::cerr << "execve: Error" << std::endl;
 			for (auto* p : exec_argv)
 				free(p);
+			exit(1);
 		}
 	}
 	if (pid > 0) //parent process
@@ -178,7 +178,7 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
-	std::cout << "CGI-POLLHUP";
+	// std::cout << "CGI-POLLHUP";
 }
 
 } // namespace webserv

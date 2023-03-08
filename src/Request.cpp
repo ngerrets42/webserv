@@ -53,7 +53,7 @@ void parse_header_fields(std::unordered_map<std::string, std::string>& fields, s
 	std::string word;
 	while (!buffer_stream.eof())
 	{
-		if (buffer_stream.peek() == '\r')
+		if (buffer_stream.peek() == '\r' || buffer_stream.peek() == '\n')
 			break ;
 		buffer_stream >> word;
 		if (word.length() == 0)
@@ -94,6 +94,8 @@ void parse_header_fields(std::unordered_map<std::string, std::string>& fields, s
 	ssize_t tg = buffer_stream.tellg();
 	if (tg > 0)
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
+	else
+		std::cout << "tg == " << tg << std::endl;;
 }
 
 // This consumes the part of the buffer that's used

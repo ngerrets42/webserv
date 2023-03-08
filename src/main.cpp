@@ -41,7 +41,10 @@ static std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
 static bool s_run = true;
 int main(int argc, char **argv)
 {
+	// TODO: Remove
 	(void)std::atexit([]() { system("leaks -q webserv"); });
+
+
 	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
 
 	std::string config_path = "config/webserv.json";
@@ -79,7 +82,7 @@ int main(int argc, char **argv)
 		size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
 		if (amount < 0)
 			std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
-		if (amount == 0) continue ;
+		if (amount <= 0) continue ;
 
 		for (struct pollfd& pfd : fds)
 		{

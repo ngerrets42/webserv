@@ -55,12 +55,12 @@ class Connection : public Pollable
 	private:
 
 	void new_request(pollable_map_t& fd_map);
-	void new_request_post(pollable_map_t& fd_map);
+	void new_request_cgi(pollable_map_t& fd_map);
 	void continue_request(void);
 
 	void new_response(void);
 	void new_response_get(Server const& server, Location const& loc);
-	void new_response_post(Server const& server, Location const& loc);
+	void new_response_cgi(Server const& server, Location const& loc);
 	void new_response_delete(Server const& server, Location const& loc);
 	void continue_response(pollable_map_t& fd_map);
 
