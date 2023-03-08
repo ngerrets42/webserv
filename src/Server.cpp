@@ -32,8 +32,8 @@ void Location::set_client_max_body_size(size_t body_size){
 	client_max_body_size.second = body_size;
 }
 
-void Location::add_cgi_path(std::string const & cgi_ext, std::string const & cgi_ext_path){
-	cgi[cgi_ext] = cgi_ext_path;
+void Location::add_cgi_extention(std::string const & extention){
+	cgi.push_back(extention);
 }
 
 void Location::set_upload_path(std::string const & upload_path){
@@ -68,14 +68,9 @@ std::string Location::get_cgi_path(std::string const & path) {
 	if(cgi.empty()){
 		return std::string();
 	}
-	size_t position_dot = path.find_last_of('.');
-	if(position_dot == std::string::npos){
-		return std::string();
-	}
-	std::string extention = path.substr(position_dot,(path.size() - position_dot));
-	std::unordered_map<std::string, std::string>::const_iterator it = cgi.find(extention);
-	if (it != cgi.end()){
-		return cgi[extention];
+
+	for (int i = 0; i < cgi.size(); ++i){
+		
 	}
 	return std::string();
 }

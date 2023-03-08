@@ -18,7 +18,7 @@ class Location{
 		std::pair<bool, size_t>							client_max_body_size; // (inherit if not defined)if request body is bigger, it will return error code 413 Request Entity Too Large. Current in bytes. 0 means disabled
 		std::vector<std::string>						allowed_http_commands; //(inherit if not defined)defines what HTTP request are allowed with this location. 
 		std::string										redirect;	//defines the redirect for this location. The redirect will be code 301 for permanent redirect and this will contain the url that is being redirected to
-		std::unordered_map<std::string, std::string> 	cgi; //defines the path to the CGI script for the extention of the url. e.g. example.com/help.py has an extension `py` and could be linked to `/var/www/html/script/test.py`
+		std::vector<std::string>						cgi; //contains the cgi extentions the location support
 		std::string										upload_path_loc; //defines the path for storing files
 
 		Location(void);
@@ -30,7 +30,7 @@ class Location{
 		void								add_allowed_http_command(std::string const & http_command);
 		void								set_auto_index(bool autoindex_setting);
 		void								set_client_max_body_size(size_t body_size);
-		void								add_cgi_path(std::string const & cgi_ext, std::string const & cgi_ext_path); //add the cgi extention and the path to the script
+		void								add_cgi_extention(std::string const & extention); //add the cgi extention and the path to the script
 		void								set_upload_path(std::string const & upload_path);
 
 		//getters
