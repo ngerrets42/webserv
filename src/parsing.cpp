@@ -3,9 +3,13 @@
 #include <algorithm>
 #include <memory>
 #include "parsing.h"
-#include "ShellSocket.h"
+//#include "ShellSocket.h"
 
 namespace webserv {
+
+static void	print_error(std::string const & message){
+	std::cerr << "Error parsing config file : " << message << std::endl;
+}
 
 static bool check_directives_location_block(njson::Json::object& loc){
 	std::set<std::string>supported_directives({
@@ -90,11 +94,13 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	njson::Json::object::iterator it = serverblock.find("listen");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::INT){
+			print_error("listen value is not an integer");
 			return false;
 		}
 		else{
 			server->port = it->second->get<int>();
 			if (server->port < 0){
+				print_error("listen value can't be negative");
 				return false;
 			}
 		}
@@ -104,12 +110,14 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("host");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("host value needs to be a string");
 			return false;
 		} else {
 			std::string host = it->second->get<std::string>();
 			if (host.compare("localhost") == 0)
 				host = "127.0.0.1";
 			if(!simple_ip_format_check(host)){
+				print_error("host value is not an IPv4 address");
 				return false;
 			}
 			server->host = host;
@@ -122,11 +130,13 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("server_names");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::ARRAY){
+			print_error("server_names needs to be set in an array");
 			return false;
 		} else {
 			njson::Json::array& server_names = it->second->get<njson::Json::array>();
 			for(size_t i = 0; i < server_names.size(); ++i){
 				if(server_names[i]->get_type() != njson::Json::STRING){
+					print_error("server_names values needs to be string");
 					return false;
 				} else {
 					server->add_server_name(server_names[i]->get<std::string>());
@@ -140,6 +150,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("root");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("root value needs to be a string");
 			return false;
 		} else {
 			server->root = it->second->get<std::string>();
@@ -150,6 +161,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("index");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("index value needs to be a string");
 			return false;
 		} else {
 			server->index = it->second->get<std::string>();
@@ -160,6 +172,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("auto_index");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::BOOL){
+			print_error("auto_index value needs to be a boolean");
 			return false;
 		} else {
 			server->autoindex = it->second->get<bool>();
@@ -170,20 +183,24 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("error_pages");
 	if (it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::OBJECT){
+			print_error("error_pages needs to be in the key pair format of two strings");
 			return false;
 		} else {
 			njson::Json::object& error_pages = it->second->get<njson::Json::object>();
 			njson::Json::object::iterator errit;
 			for(errit = error_pages.begin(); errit != error_pages.end(); errit++){
 				if (errit->second->get_type() != njson::Json::STRING){
+					print_error("error_page value needs to be a string");
 					return false;
 				} else {
 					if(!is_all_digits(errit->first)){
+						print_error("error page key value needs to be all digits");
 						return false;
 					}
 					try{
 						server->add_error_page(std::stoi(errit->first),errit->second->get<std::string>());
 					} catch (std::exception e){
+						print_error("couldn't process the error code");
 						return false;
 					}
 				}
@@ -196,10 +213,12 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("client_body_size");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::INT){
+			print_error("client_body_size value needs to be an integer");
 			return false;
 		} else {
 			int body_size = it->second->get<int>();
 			if(body_size < 0){
+				print_error("client_body_size value can not be negative");
 				return false;
 			} else {
 				server->client_max_body_size = body_size;
@@ -211,6 +230,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("redirect");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("redirect value need to be a string");
 			return false;
 		} else {
 			server->redirect = it->second->get<std::string>();
@@ -221,11 +241,13 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 	it = serverblock.find("allowed_methods");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::ARRAY){
+			print_error("allowed_methods needs to be set in an array");
 			return false;
 		} else {
 			njson::Json::array& allowed_http_commands = it->second->get<njson::Json::array>();
 			for(size_t i = 0; i < allowed_http_commands.size(); ++i){
 				if(allowed_http_commands[i]->get_type() != njson::Json::STRING){
+					print_error("allowd_methods values needs to be a string");
 					return false;
 				} else {
 					server->add_allowed_http_command(allowed_http_commands[i]->get<std::string>());
@@ -242,6 +264,10 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 		return false;
 	}
 	njson::Json::object::iterator it;
+	if (!(path.front() == '/' && path.back() == '/')){
+		print_error("Location path needs to start and end with a /");
+		return false;
+	}
 	loc.path = path;
 
 	//root
@@ -249,6 +275,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("root");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("root value needs to be a string");
 			return false;
 		} else {
 			loc.root = it->second->get<std::string>();
@@ -259,6 +286,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("index");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("index value needs to be a string");
 			return false;
 		} else {
 			loc.index = it->second->get<std::string>();
@@ -269,6 +297,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("auto_index");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::BOOL){
+			print_error("auto_index value needs to be a boolean");
 			return false;
 		} else {
 			loc.autoindex.first = true;
@@ -280,20 +309,24 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("error_pages");
 	if (it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::OBJECT){
+			print_error("error_pages needs to be in the key pair format of two strings");
 			return false;
 		} else {
 			njson::Json::object& error_pages = it->second->get<njson::Json::object>();
 			njson::Json::object::iterator errit;
 			for(errit = error_pages.begin(); errit != error_pages.end(); errit++){
 				if (errit->second->get_type() != njson::Json::STRING){
+					print_error("error_page value needs to be a string");
 					return false;
 				} else {
 					if(!is_all_digits(errit->first)){
+						print_error("error page key value needs to be all digits");
 						return false;
 					}
 					try{
 						loc.add_error_page(std::stoi(errit->first),errit->second->get<std::string>());
 					} catch (std::exception e){
+						print_error("couldn't process the error code");
 						return false;
 					}
 				}
@@ -305,10 +338,12 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("client_body_size");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::INT){
+			print_error("client_body_size value needs to be an integer");
 			return false;
 		} else {
 			int body_size = it->second->get<int>();
 			if(body_size < 0){
+				print_error("client_body_size value can not be negative");
 				return false;
 			} else {
 				loc.client_max_body_size.first = true;
@@ -321,6 +356,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("redirect");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::STRING){
+			print_error("redirect value need to be a string");
 			return false;
 		} else {
 			loc.redirect = it->second->get<std::string>();
@@ -331,11 +367,13 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("allowed_methods");
 	if(it != locationblock.end()){
 		if(it->second->get_type() != njson::Json::ARRAY){
+			print_error("allowed_methods needs to be set in an array");
 			return false;
 		} else {
 			njson::Json::array& allowed_http_commands = it->second->get<njson::Json::array>();
 			for(size_t i = 0; i < allowed_http_commands.size(); ++i){
 				if(allowed_http_commands[i]->get_type() != njson::Json::STRING){
+					print_error("allowd_methods values needs to be a string");
 					return false;
 				} else {
 					loc.add_allowed_http_command(allowed_http_commands[i]->get<std::string>());
@@ -347,16 +385,22 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	//setting CGI
 	it = locationblock.find("CGI");
 	if(it != locationblock.end()){
-		if(it->second->get_type() != njson::Json::OBJECT){
+		if(it->second->get_type() != njson::Json::ARRAY){
+			print_error("CGI needs to be set in an array");
 			return false;
 		} else {
-			njson::Json::object& cgi = it->second->get<njson::Json::object>();
-			njson::Json::object::iterator cgiit;
-			for(cgiit = cgi.begin(); cgiit != cgi.end(); cgiit++){
-				if(cgiit->second->get_type() != njson::Json::STRING){
+			njson::Json::array& cgi = it->second->get<njson::Json::array>();
+			for(size_t i = 0; i < cgi.size(); ++i){
+				if (cgi[i]->get_type() != njson::Json::STRING){
+					print_error("CGI values needs to be a string");
 					return false;
 				} else {
-					loc.add_cgi_path(cgiit->first, cgiit->second->get<std::string>());
+					std::string ext = cgi[i]->get<std::string>();
+					if (ext.front() != '.'){
+						print_error("extensions for CGI have to start with a '.'");
+						return false;
+					}
+					loc.add_cgi_extension(cgi[i]->get<std::string>());
 				}
 			}
 		}
@@ -366,6 +410,7 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 	it = locationblock.find("upload_path");
 	if (it != locationblock.end()){
 		if (it->second->get_type() != njson::Json::STRING){
+			print_error("upload_path needs to be a string");
 			return false;
 		} else {
 			loc.upload_path_loc = it->second->get<std::string>();
@@ -379,6 +424,7 @@ static bool process_locations(njson::Json::object& serverblock, Server* server){
 	njson::Json::object::iterator it = serverblock.find("locations");
 	if(it != serverblock.end()){
 		if(it->second->get_type() != njson::Json::OBJECT){
+			print_error("locations needs to be set in key value pairs");
 			return false;
 		} else {
 			njson::Json::object& locations = it->second->get<njson::Json::object>();
@@ -445,29 +491,29 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 	return (servers);
 }
 
-std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
-{
-	std::vector<std::unique_ptr<Socket>> sockets;
-	std::set<int> ports_to_listen;
+// std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
+// {
+// 	std::vector<std::unique_ptr<Socket>> sockets;
+// 	std::set<int> ports_to_listen;
 
-	for(size_t i = 0; i < servers.size(); ++i){
-		int server_port = servers[i]->port;
-		if(ports_to_listen.count(server_port) == 0){
-			ports_to_listen.insert(server_port);
-			Socket * sock_serv = new Socket(server_port);
-			sock_serv->add_server_ref(servers[i]);
-			sockets.emplace_back(sock_serv);
-		} else {
-			for(size_t j = 0; j < sockets.size(); ++j){
-				if(sockets[j]->get_port() == server_port){
-					sockets[j]->add_server_ref(servers[i]);
-					break;
-				}
-			}
-		}
-	}
-	// sockets.emplace_back(new ShellSocket(6666));
-	return (sockets);
-}
+// 	for(size_t i = 0; i < servers.size(); ++i){
+// 		int server_port = servers[i]->port;
+// 		if(ports_to_listen.count(server_port) == 0){
+// 			ports_to_listen.insert(server_port);
+// 			Socket * sock_serv = new Socket(server_port);
+// 			sock_serv->add_server_ref(servers[i]);
+// 			sockets.emplace_back(sock_serv);
+// 		} else {
+// 			for(size_t j = 0; j < sockets.size(); ++j){
+// 				if(sockets[j]->get_port() == server_port){
+// 					sockets[j]->add_server_ref(servers[i]);
+// 					break;
+// 				}
+// 			}
+// 		}
+// 	}
+// 	// sockets.emplace_back(new ShellSocket(6666));
+// 	return (sockets);
+// }
 
 } // namespace webserv

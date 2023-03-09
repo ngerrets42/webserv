@@ -30,7 +30,7 @@ class Location{
 		void								add_allowed_http_command(std::string const & http_command);
 		void								set_auto_index(bool autoindex_setting);
 		void								set_client_max_body_size(size_t body_size);
-		void								add_cgi_extention(std::string const & extention); //add the cgi extention and the path to the script
+		void								add_cgi_extension(std::string const & extention); //add the cgi extention and the path to the script
 		void								set_upload_path(std::string const & upload_path);
 
 		//getters

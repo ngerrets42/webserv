@@ -32,7 +32,7 @@ void Location::set_client_max_body_size(size_t body_size){
 	client_max_body_size.second = body_size;
 }
 
-void Location::add_cgi_extention(std::string const & extention){
+void Location::add_cgi_extension(std::string const & extention){
 	cgi.push_back(extention);
 }
 
@@ -64,13 +64,20 @@ bool Location::is_http_command_allowed(std::string const & http_command) const{
 	}
 }
 
+
 std::string Location::get_cgi_path(std::string const & path) {
-	if(cgi.empty()){
+	if(cgi.empty() || (path.find('.',0) == std::string::npos)){
 		return std::string();
 	}
-
 	for (int i = 0; i < cgi.size(); ++i){
-		
+		size_t ext_size = cgi[i].size();
+		size_t pos = path.find(cgi[i], 0);
+		while (pos != std::string::npos){ 
+			if (path[pos + ext_size] == '/' || path[pos + ext_size] == '\0'){
+				return path.substr(0, pos + ext_size);
+			}
+			pos = path.find(cgi[i], pos + 1);
+		}
 	}
 	return std::string();
 }
@@ -82,7 +89,6 @@ std::string Location::get_cgi_path(std::string const & path) {
 //	it will set some values to default
 //		port		80
 //		root		/var/www/html
-//		index		index.html
 //		autoindex	false
 //		client_max_body_size	0 (meaning no limit)
 
@@ -98,15 +104,11 @@ size_t Server::match_paths(std::string const & input_path, std::string const & l
 	if(input_path.empty() || loc_block_path.empty() || input_path.size() < loc_block_path.size()){
 		return 0;
 	}
-	size_t match_size = 0;
-	for(size_t i  = 0; i <= loc_block_path.size(); ++i){
-		if(i > input_path.size() || (loc_block_path[i] != '/' && loc_block_path[i] != '\0' && loc_block_path[i] != input_path[i])){
-			return match_size;
-		}
-		if((loc_block_path[i] == '/' || loc_block_path[i] == '\0'))
-			match_size = i;
+	size_t size_loc_block_path = loc_block_path.size();
+	if(input_path.compare(0, size_loc_block_path, loc_block_path) == 0){
+		return size_loc_block_path;
 	}
-	return match_size;
+	return 0;
 }
 
 //setters
