@@ -19,8 +19,6 @@
 
 namespace webserv {
 
-// TODO: Delete connection when CLOSED
-
 // CONSTRUCTORS
 Connection::Connection(sockfd_t connection_fd, addr_t address, Socket* parent)
 :	socket_fd(connection_fd),
@@ -48,11 +46,12 @@ Connection::HandlerData::HandlerData()
 // POLL
 void Connection::on_pollhup(pollable_map_t& fd_map)
 {
+	(void)fd_map;
 	// Connection interrupted, remove self from fd_map
 	std::cout << "Connection::on_pollhup" << std::endl;
-	fd_map.erase(get_fd());
-	// TODO: change this?:
-	delete this;
+
+	// Set self to close, so the connection can be closed by an external observer
+	state = CLOSE;
 }
 
 void Connection::on_pollin(pollable_map_t& fd_map)
@@ -92,6 +91,13 @@ short Connection::get_events(sockfd_t fd) const
 	return (events);
 }
 
+static void close_cgi(pollable_map_t& fd_map, CGI* cgi)
+{
+	fd_map.erase(cgi->get_in_fd());
+	fd_map.erase(cgi->get_out_fd());
+	delete cgi;
+}
+
 void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	// Build cgi-environment
@@ -108,29 +114,43 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = serv.get_location(handler_data.current_request.path);
-	handler_data.cgi = new CGI(env, serv, loc, handler_data.current_request.path);
+
+	// No content length means no body to send to the CGI
+	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
+		state = READY_TO_WRITE;
+	else
+	{
+		// Read content length
+		try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
+		catch (std::exception& e)
+		{
+			std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
+			handler_data.current_response.set_status_code("500");
+			return ;
+		}
+	}
+
+	try { handler_data.cgi = new CGI(env, serv, loc, handler_data.current_request.path); }
+	catch (std::exception& e)
+	{
+		std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
+		delete handler_data.cgi;
+		handler_data.current_response.set_status_code("500");
+		return ;
+	}
 
 	handler_data.cgi->buffer_in = handler_data.buffer; // Push leftover buffer into the CGI buffer
 	handler_data.cgi->buffer_in.pop_back();
 
+	// Add fds to map for polling
 	fd_map.insert({handler_data.cgi->get_in_fd(), handler_data.cgi});
 	fd_map.insert({handler_data.cgi->get_out_fd(), handler_data.cgi});
 
-	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
-	{
-		state = READY_TO_WRITE;
-		return ;
-	}
+	// Amount of data already received
+	handler_data.received_size = handler_data.cgi->buffer_in.size();
+	std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size << " - ";
 
-	try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
-	catch (std::exception& e)
-	{
-		// TODO: Error-code & Close CGI
-		std::cerr << e.what() << std::endl;
-	}
-	handler_data.received_size = handler_data.buffer.size();
-	std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size;
-
+	// We received everything already, no need to continue READING
 	if (handler_data.received_size >= handler_data.content_size)
 		// Already received everything
 		state = READY_TO_WRITE;
@@ -159,7 +179,6 @@ void Connection::new_request(pollable_map_t& fd_map)
 
 	// Build the CGI
 	std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
-	std::cout << "path: " << handler_data.current_request.path << " cgi-string: " << cgi << std::endl;
 	if (!cgi.empty())
 	{
 		cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
@@ -456,6 +475,8 @@ sockfd_t Connection::get_fd(void) const
 {
 	return (socket_fd);
 }
+
+bool Connection::should_destroy(void) const { return state == CLOSE; }
 
 std::string Connection::get_ip(void) const
 {

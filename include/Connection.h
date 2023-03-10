@@ -19,11 +19,11 @@ class Connection : public Pollable
 	public:
 	enum State
 	{
-		READY_TO_READ = 0,
-		READING,
-		READY_TO_WRITE,
-		WRITING,
-		CLOSE
+		READY_TO_READ = 0,	// Waiting for REQUEST
+		READING,			// Receiving the body of the REQUEST
+		READY_TO_WRITE,		// Ready to send RESPONSE
+		WRITING,			// Sending body of RESPONSE
+		CLOSE				// Connection needs to be closed
 	};
 
 	Connection(sockfd_t connection_fd, addr_t address, Socket* parent);
@@ -43,6 +43,8 @@ class Connection : public Pollable
 	std::string get_ip(void) const;
 	State get_state(void) const;
 	virtual sockfd_t get_fd(void) const override;
+
+	virtual bool should_destroy(void) const override;
 
 	virtual short get_events(sockfd_t fd) const override;
 

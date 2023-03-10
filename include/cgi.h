@@ -23,10 +23,13 @@ namespace webserv {
 
 		virtual sockfd_t get_fd(void) const override;
 
+		virtual bool should_destroy(void) const override;
+
 		int get_in_fd(void) const;
 		int get_out_fd(void) const;
 
 		int get_pid(void) const;
+
 
 		virtual short get_events(sockfd_t fd) const override;
 

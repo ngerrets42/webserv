@@ -31,6 +31,8 @@ class Socket : public Pollable
 
 	virtual sockfd_t get_fd(void) const override;
 
+	virtual bool should_destroy(void) const override;
+
 	virtual short get_events(sockfd_t fd) const override;
 
 	protected:

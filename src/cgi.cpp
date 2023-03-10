@@ -1,4 +1,5 @@
 #include "CGI.h"
+#include <stdexcept>
 #include <unistd.h>
 
 namespace webserv {
@@ -57,13 +58,8 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 	pid = fork();
 	if(pid < 0)
-	{
-		// TODO: fork error
-		// Fork unavailable, therefore server error
-		std::cerr << "fork not available: " << strerror(errno);
-		// Response builder should check pid and send error-page
-		return ;
-	}
+		// Fork unavailable THROW, needs to be caught
+		throw std::runtime_error(std::string {"CGI::CGI() failed to fork: "} + strerror(errno) );
 
 	// Child process directly turns into the CGI and becomes unavailable until completed
 	if(pid == 0) // child process
@@ -87,11 +83,9 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 		// Actual execution
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
-			// TODO: Server error, send error-page (We are in child though, not that easy)
-
 			std::string status = "status: 500 Internal Server Error\r\n";
 			std::cout << status << std::endl;
-			std::cerr << "execve: Error" << std::endl;
+			std::cerr << "CGI::CGI() execve error" << std::endl;
 			for (auto* p : exec_argv)
 				free(p);
 			exit(1);
@@ -153,22 +147,18 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 		buffer_out.resize(read_size);
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
 }
+
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
 	// WRITE TO CGI
-	// std::cout << "Writing to CGI";
 	if (buffer_in.empty())
-	{
-		// std::cout << ": Buffer empty";
 		return ;
-	}
 
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
 	{
-		// TODO: Error-code. Something went wrong, can't write full size
-		std::cerr << ": Can't write full buffer to CGI";
+		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 	}
 	std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
 
@@ -178,7 +168,9 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
-	// std::cout << "CGI-POLLHUP";
+	std::cerr << "CGI-POLLHUP" << std::endl;
 }
+
+bool CGI::should_destroy(void) const { return pid < 0; }
 
 } // namespace webserv

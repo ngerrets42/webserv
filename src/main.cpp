@@ -23,12 +23,20 @@ static pollable_map_t build_map(std::vector<std::unique_ptr<Socket>>& sockets)
 	return (fd_map);
 }
 
-static std::vector<struct pollfd> get_descriptors(pollable_map_t const& fd_map)
+static std::vector<struct pollfd> get_descriptors(pollable_map_t& fd_map)
 {
 	std::vector<struct pollfd> fds;
 
 	for (auto const& pair : fd_map)
 	{
+		// First check if this descriptor needs to be removed or not
+		if (pair.second->should_destroy())
+		{
+			delete pair.second;
+			fd_map.erase(pair.first);
+			continue ;
+		}
+
 		struct pollfd tmp = {};
 		tmp.fd = pair.first;
 		tmp.events = pair.second->get_events(pair.first);
