@@ -86,9 +86,11 @@ void Connection::on_pollout(pollable_map_t& fd_map)
 short Connection::get_events(sockfd_t fd) const
 {
 	(void)fd;
-	short events = POLLHUP | POLLIN;
+	short events = POLLHUP;
 	if (state == READY_TO_WRITE || state == WRITING)
 		events |= POLLOUT;
+	else if (state == READING || state == READY_TO_READ)
+		events |= POLLIN;
 	return (events);
 }
 
@@ -160,10 +162,12 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 // Request building
 void Connection::new_request(pollable_map_t& fd_map)
 {
+	// Initial request and response conditions
 	state = READING;
 	handler_data = HandlerData();
 	handler_data.current_response = Response();
 
+	// receive the HTTP header
 	handler_data.buffer = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&]{
 		this->state = CLOSE;
 	});
@@ -172,23 +176,24 @@ void Connection::new_request(pollable_map_t& fd_map)
 	Server& server = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
 
-	// TODO: check request validity
-	if (handler_data.current_request.validity == INVALID) handler_data.current_response.set_status_code("400");
-	else if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
+	// Get the content length for validation check
+	size_t content_length = 0;
+	if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
 	{
-		try
-		{
-			size_t length = std::stoul(handler_data.current_request.fields["content-length"]);
-			if (length >= server.get_client_max_body_size(loc))
-				handler_data.current_response.set_status_code("403");
-		}
+		try { content_length = std::stoul(handler_data.current_request.fields["content-length"]); }
 		catch (std::exception& e) { handler_data.current_response.set_status_code("403"); }
 	}
-	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
-		handler_data.current_response.set_status_code("505");
+
+	// Initial request validations
+	if (handler_data.current_request.validity == INVALID) handler_data.current_response.set_status_code("400");
 	else if (!server.is_http_command_allowed(get_request_string(handler_data.current_request.type), loc))
 		handler_data.current_response.set_status_code("405");
+	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
+		handler_data.current_response.set_status_code("505");
+	else if (content_length > server.get_client_max_body_size(loc))
+		handler_data.current_response.set_status_code("403");
 
+	// When there is no status response code
 	if (handler_data.current_response.status_code.empty())
 	{
 		// Build the CGI
@@ -285,7 +290,6 @@ void Connection::new_response(void)
 	
 	if (handler_data.current_response.status_code.empty())
 	{
-		handler_data.current_response.set_status_code("200");
 		if (handler_data.current_request.type == DELETE)
 			new_response_delete(server, loc);
 		else
@@ -301,10 +305,12 @@ void Connection::new_response(void)
 		return ;
 
 	// In case of error-code
-	if (handler_data.current_response.status_code != "200")
+	if (!handler_data.current_response.status_code.empty())
 	{
 		std::cout << '(' << socket_fd << "): "
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
+
+		handler_data.current_request.fields["connection"] = "close";
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
 
 		handler_data.current_response.content_length.clear();
@@ -318,7 +324,7 @@ void Connection::new_response(void)
 			if (!handler_data.file)
 			{
 				std::cerr << " open failed; " << std::endl;
-				handler_data.current_response.content_length = "0";
+				handler_data.current_response.content_length.clear();
 			}
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
