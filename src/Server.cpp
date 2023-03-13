@@ -228,15 +228,20 @@ std::string const &	Server::get_index_page(Location const & location) const{
 	}
 }
 
-std::string Server::get_cgi(Location & location, std::string const & path) const{
+std::pair<std::string, std::string> Server::get_cgi(Location & location, std::string const & path) const{
+	std::pair<std::string, std::string> result;
 	if(location.cgi.empty()){
-		return std::string();
+		return result;
 	} else {
 		std::string cgi_path = location.get_cgi_path(path);
 		if (cgi_path.empty()){
-			return std::string();
+			return result;
 		} else {
-			return cgi_path;
+			result.first = cgi_path;
+			if (path.size() > cgi_path.size()){
+				result.second = path.substr(cgi_path.size(), path.size() - cgi_path.size());
+			}
+			return result;
 		}
 	}
 }

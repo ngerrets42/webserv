@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include "parsing.h"
-//#include "ShellSocket.h"
+#include "ShellSocket.h"
 
 namespace webserv {
 
@@ -491,29 +491,29 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 	return (servers);
 }
 
-// std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
-// {
-// 	std::vector<std::unique_ptr<Socket>> sockets;
-// 	std::set<int> ports_to_listen;
+std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
+{
+	std::vector<std::unique_ptr<Socket>> sockets;
+	std::set<int> ports_to_listen;
 
-// 	for(size_t i = 0; i < servers.size(); ++i){
-// 		int server_port = servers[i]->port;
-// 		if(ports_to_listen.count(server_port) == 0){
-// 			ports_to_listen.insert(server_port);
-// 			Socket * sock_serv = new Socket(server_port);
-// 			sock_serv->add_server_ref(servers[i]);
-// 			sockets.emplace_back(sock_serv);
-// 		} else {
-// 			for(size_t j = 0; j < sockets.size(); ++j){
-// 				if(sockets[j]->get_port() == server_port){
-// 					sockets[j]->add_server_ref(servers[i]);
-// 					break;
-// 				}
-// 			}
-// 		}
-// 	}
-// 	// sockets.emplace_back(new ShellSocket(6666));
-// 	return (sockets);
-// }
+	for(size_t i = 0; i < servers.size(); ++i){
+		int server_port = servers[i]->port;
+		if(ports_to_listen.count(server_port) == 0){
+			ports_to_listen.insert(server_port);
+			Socket * sock_serv = new Socket(server_port);
+			sock_serv->add_server_ref(servers[i]);
+			sockets.emplace_back(sock_serv);
+		} else {
+			for(size_t j = 0; j < sockets.size(); ++j){
+				if(sockets[j]->get_port() == server_port){
+					sockets[j]->add_server_ref(servers[i]);
+					break;
+				}
+			}
+		}
+	}
+	// sockets.emplace_back(new ShellSocket(6666));
+	return (sockets);
+}
 
 } // namespace webserv
