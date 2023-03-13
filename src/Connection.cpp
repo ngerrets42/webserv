@@ -197,10 +197,10 @@ void Connection::new_request(pollable_map_t& fd_map)
 	if (handler_data.current_response.status_code.empty())
 	{
 		// Build the CGI
-		std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
-		if (!cgi.empty())
+		auto cgi_pair = server.get_cgi(loc, handler_data.current_request.path);
+		if (!cgi_pair.first.empty())
 		{
-			cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
+			std::string cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
 			if (data::get_file_size(cgi) == 0)
 			{
 				handler_data.current_response.set_status_code("404");

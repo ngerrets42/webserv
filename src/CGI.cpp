@@ -74,7 +74,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 		// Build argv
 		std::vector<char*> exec_argv;
-		std::string cgi_exec = server.get_root(loc) + "/" + path;//server.get_cgi(loc, path);
+		std::string cgi_exec = server.get_root(loc) + "/" + server.get_cgi(loc, path).first;
 
 		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
