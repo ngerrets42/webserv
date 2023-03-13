@@ -110,6 +110,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 CGI::~CGI()
 {
+	std::cout << "deleting CGI" << std::endl;
 	close(pipes.in[1]);
 	close(pipes.out[0]);
 }
@@ -136,9 +137,10 @@ int CGI::get_out_fd(void) const
 
 short CGI::get_events(sockfd_t fd) const
 {
-	if (fd == pipes.in[1])
-		return (POLLOUT);
-	return (POLLIN);
+	short events = POLLIN;
+	if (fd == pipes.in[1] && !buffer_in.empty())
+		events |= POLLOUT;
+	return (events);
 }
 
 void CGI::on_pollin(pollable_map_t& fd_map)
@@ -157,10 +159,6 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
-	// WRITE TO CGI
-	if (buffer_in.empty())
-		return ;
-
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
@@ -175,8 +173,9 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
+	if (!destroy)
+		std::cerr << "CGI-POLLHUP" << std::endl;
 	destroy = true;
-	std::cerr << "CGI-POLLHUP" << std::endl;
 }
 
 bool CGI::should_destroy(void) const { return pid < 0; }

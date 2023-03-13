@@ -13,8 +13,8 @@
 		{
 			"listen": 8080,
 			"host": "0.0.0.0",
-			"server_names": ["localhost", "hello.com"],
-			"client_body_size": 1000,
+			"server_names": ["localhost"],
+			"client_body_size": 10000000,
 			"index": "",
 
 			"error_pages": {
@@ -30,35 +30,35 @@
 
 			"locations": {
 				"/": {
-					"allowed_methods": ["GET"],
+					"allowed_methods": ["GET", "POST"],
 					"root": "var/www/html",
 					"index": "",
 					"auto_index": true,
 					"CGI": [".py"]
-				},
-				"/files/": {
-					"allowed_methods": ["GET", "DELETE"],
-					"root": "var/www/upload",
-					"index": "",
-					"auto_index": true
 				}
 			}
 		},
-
 		{
-			"listen": 9090,
-			"server_names": ["images.127.0.0.1", "images.localhost", "images.10.11.4.4", "images.example"],
+			"listen": 8080,
+			"host": "0.0.0.0",
+			"server_names": ["files.localhost"],
+			"client_body_size": 1000,
+			"index": "",
 
 			"error_pages": {
-				"404": "404.html"
+				"404": "404.html",
+				"403": "403.html",
+				"405": "405.html",
+				"500": "500.html"
 			},
+
+			"root": "var/www/upload",
 
 			"locations": {
 				"/": {
-					"client_body_size": 10000,
-					"allowed_methods": ["GET", "POST", "DELETE"],
-					"root": "var/www/upload",
-					"auto_index": false
+					"allowed_methods": ["GET", "DELETE"],
+					"index": "",
+					"auto_index": true
 				}
 			}
 		}

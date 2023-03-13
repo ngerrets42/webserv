@@ -1,9 +1,17 @@
 #!/usr/local/bin/python3
+import sys, os
+sys.stderr.write("upload_file.py: START\n\n\n\n\n\n\n")
+
+sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
+
 import cgi, sys, os
 import cgitb; cgitb.enable()
+sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
 form = cgi.FieldStorage()
 
-print("content-type: text/html\n\n")
+
+print("content-type: text/html\n")
+
 
 message = None
 
@@ -32,3 +40,5 @@ replyhtml = """
 </html>
 """
 print(replyhtml % message)
+
+sys.stderr.write("upload_file.py: END");

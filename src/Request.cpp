@@ -118,14 +118,14 @@ Request request_build(std::vector<char>& buffer)
 	buffer_stream >> request.path;
 	if (request.path.length() == 0) return (request); // No path
 
-	if (request.path.find("..") != std::string::npos) return (request); // Highly illegal use of ".."
-
 	size_t pos = request.path.find_first_of('?');
 	if (pos != std::string::npos && pos > 0 && pos < request.path.length())
 	{
 		request.path_arguments = request.path.substr(pos + 1);
 		request.path = request.path.substr(0, pos);
 	}
+
+	if (request.path.find("..") != std::string::npos) return (request); // Highly illegal use of ".."
 	
 	buffer_stream >> request.http_version;
 	if (request.http_version.length() == 0) return (request); // No HTTP version

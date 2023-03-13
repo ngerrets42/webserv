@@ -87,7 +87,12 @@ short Connection::get_events(sockfd_t fd) const
 {
 	(void)fd;
 	short events = POLLHUP;
-	if (state == READY_TO_WRITE || state == WRITING)
+	if (handler_data.cgi != nullptr)
+	{
+		if (!handler_data.cgi->buffer_out.empty())
+			events |= POLLOUT;
+	}
+	else if (state == READY_TO_WRITE || state == WRITING) && ()
 		events |= POLLOUT;
 	else if (state == READING || state == READY_TO_READ)
 		events |= POLLIN;
@@ -112,8 +117,9 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	auto cgi_pair = serv.get_cgi(loc, handler_data.current_request.path);
 
 	std::vector<std::string> env = env::initialize();
-	if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
-		env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
+	auto it = handler_data.current_request.fields.find("content-length");
+	if (it != handler_data.current_request.fields.end())
+		env::set_value(env, "CONTENT_LENGTH", it->second);
 	
 	if (handler_data.current_request.type == POST)
 		env::set_value(env, "REQUEST_METHOD", "POST");
@@ -212,7 +218,7 @@ void Connection::new_request(pollable_map_t& fd_map)
 	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
 		handler_data.current_response.set_status_code("505");
 	else if (content_length > server.get_client_max_body_size(loc))
-		handler_data.current_response.set_status_code("403");
+		handler_data.current_response.set_status_code("413");
 
 	// When there is no status response code
 	if (handler_data.current_response.status_code.empty())
@@ -237,8 +243,12 @@ void Connection::new_request(pollable_map_t& fd_map)
 			{
 				// Remove file
 				std::string to_remove = server.get_root(loc) + handler_data.current_request.path;
+				std::cout << "removing file: " << to_remove << std::endl;
 				if( ::remove(to_remove.c_str()) != 0 )
+				{
 					std::cerr << "Can't delete file: " << strerror(errno) << std::endl;
+					handler_data.current_response.set_status_code("404");
+				}
 			}
 		}
 	}
@@ -255,6 +265,11 @@ void Connection::new_request(pollable_map_t& fd_map)
 
 void Connection::continue_request(void)
 {
+	// if (handler_data.cgi != nullptr && handler_data.cgi->get_events(handler_data.cgi->get_out_fd()) & POLLIN)
+	// {
+	// 	state = READY_TO_WRITE;
+	// 	return ;
+	// }
 	// Only happens during POST usually
 	// Receive data from connection
 	if (!handler_data.cgi->buffer_in.empty())
@@ -307,7 +322,7 @@ void Connection::new_response(void)
 	Server& server = socket.get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
 	
-	if (handler_data.current_response.status_code.empty())
+	if (handler_data.current_response.status_code.empty() || handler_data.current_response.status_code == "200" || handler_data.current_response.status_code == "201")
 	{
 		if (handler_data.current_request.type == DELETE)
 			new_response_delete(server, loc);
@@ -324,7 +339,7 @@ void Connection::new_response(void)
 		return ;
 
 	// In case of error-code
-	if (!handler_data.current_response.status_code.empty())
+	if (!handler_data.current_response.status_code.empty() && handler_data.current_response.status_code != "200" && handler_data.current_response.status_code != "201")
 	{
 		std::cout << '(' << socket_fd << "): "
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
@@ -347,6 +362,14 @@ void Connection::new_response(void)
 			}
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
+	}
+
+	if (handler_data.current_response.status_code.empty())
+	{
+		if (handler_data.current_request.type == POST)
+			handler_data.current_response.set_status_code("201");
+		else
+		 	handler_data.current_response.set_status_code("200");
 	}
 
 	// Add final headers
@@ -425,6 +448,7 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
 	if (handler_data.cgi->buffer_out.empty())
 	{
+		// std::cout << "Outbuffer empty" << std::endl;
 		state = READY_TO_WRITE;
 		return ;
 	}
@@ -439,14 +463,12 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 	std::stringstream buffer_stream(handler_data.cgi->buffer_out.data());
 	parse_header_fields(fields, handler_data.cgi->buffer_out, buffer_stream);
 
-	// TODO: read "Status" header-field
 	auto it= fields.find("status");
 	if (it != fields.end()) handler_data.current_response.set_status_code(it->second.substr(0, it->second.find_first_of(' ')));
 
 	it = fields.find("content-type");
 	if (it != fields.end()) handler_data.current_response.content_type = it->second;
 
-	// TODO: handle no content-length
 	it = fields.find("content-length");
 	if (it != fields.end()) handler_data.current_response.content_length = it->second;
 	else
@@ -454,6 +476,9 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 		handler_data.current_request.fields["connection"] = "close";
 		handler_data.current_response.content_length.clear();
 	}
+
+	if (!handler_data.current_response.status_code.empty())
+		handler_data.cgi->buffer_out.clear();
 }
 
 void Connection::new_response_delete(Server const& server, Location const& loc)
