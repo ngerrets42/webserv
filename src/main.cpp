@@ -95,8 +95,12 @@ int main(int argc, char **argv)
 		for (struct pollfd& pfd : fds)
 		{
 			if (pfd.revents != 0)
+			{
+				if (fd_map.find(pfd.fd) == fd_map.end())
+					continue ;
 				// Notify the connection/socket/cgi that a new event needs to be handled
 				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map);
+			}
 		}
 	}
 

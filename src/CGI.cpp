@@ -16,7 +16,10 @@ namespace env
 			"SCRIPT_NAME", "SERVER_NAME", "SERVER_PROTOCOL", "SERVER_SOFTWARE"
 		};
 
-		for(auto& s : env) s += '=';
+		if (env[0].back() != '=')
+		{
+			for(auto& s : env) s += '=';
+		}
 		return (env);
 	}
 
@@ -49,7 +52,7 @@ namespace env
 
 } // namespace env
 
-CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::string const& path)
+CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::string const& path) : destroy(false)
 {
 	std::cout << "Lauching new CGI" << std::endl;
 	//setting up the pipes
@@ -74,13 +77,17 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 		// Build argv
 		std::vector<char*> exec_argv;
-		std::string cgi_exec = server.get_root(loc) + "/" + server.get_cgi(loc, path).first;
+		std::string cgi_exec = server.get_root(loc) + server.get_cgi(loc, path).first;
 
 		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
 		exec_argv.push_back(NULL);
 
 		// Actual execution
+		// TODO: Something goes wrong when execve fails (no rights to execute?)
+
+		std::cerr << "cgi executing: " << exec_argv[0] << std::endl;
+
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
 			std::string status = "status: 500 Internal Server Error\r\n";
@@ -168,6 +175,7 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
+	destroy = true;
 	std::cerr << "CGI-POLLHUP" << std::endl;
 }
 

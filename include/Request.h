@@ -28,7 +28,7 @@ struct Request
 	RequestType type;
 	std::string path;
 	std::string http_version;
-	std::unordered_map<std::string, std::string> path_arguments;
+	std::string path_arguments;
 	std::unordered_map<std::string, std::string> fields;
 
 	Request();

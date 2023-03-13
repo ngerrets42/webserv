@@ -34,17 +34,12 @@
 					"root": "var/www/html",
 					"index": "",
 					"auto_index": true,
-					"CGI": {
-						".py": "hello there"
-					}
+					"CGI": [".py"]
 				},
-				"/images/": {
-					"auto_index": true
-				},
-
-				"/images/folder/": {
-				},
-				"/pages/":{
+				"/files/": {
+					"allowed_methods": ["GET", "DELETE"],
+					"root": "var/www/upload",
+					"index": "",
 					"auto_index": true
 				}
 			}

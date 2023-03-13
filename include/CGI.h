@@ -48,6 +48,7 @@ namespace webserv {
 		} pipes;
 
 		public:
+		bool destroy;
 		std::vector<char> buffer_in; // Into the CGI
 		std::vector<char> buffer_out; // From the CGI
 	};
