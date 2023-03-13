@@ -11,6 +11,7 @@
 #include <cstring>
 #include <exception>
 #include <sstream>
+#include <sys/_types/_size_t.h>
 #include <sys/_types/_ssize_t.h>
 #include <sys/poll.h>
 #include <sys/wait.h>
@@ -168,30 +169,44 @@ void Connection::new_request(pollable_map_t& fd_map)
 	});
 	handler_data.current_request = request_build(handler_data.buffer);
 
-	// TODO: check request validity
-	// 400 if bad request
-	// send 413 if content-length above max body size
-	// check HTTP version (return 505 if not HTTP\0.9, HTTP\1.0 or HTTP\1.1)
-	// check valid method (501 if not GET, POST or DELETE; 405 if not allowed)
-
 	Server& server = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
 
-	// Build the CGI
-	std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
-	if (!cgi.empty())
+	// TODO: check request validity
+	if (handler_data.current_request.validity == INVALID) handler_data.current_response.set_status_code("400");
+	else if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
 	{
-		cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
-		if (data::get_file_size(cgi) == 0)
+		try
 		{
-			handler_data.current_response.set_status_code("404");
-			state = READY_TO_WRITE;
+			size_t length = std::stoul(handler_data.current_request.fields["content-length"]);
+			if (length >= server.get_client_max_body_size(loc))
+				handler_data.current_response.set_status_code("403");
 		}
-		else
-			new_request_cgi(fd_map);
+		catch (std::exception& e) { handler_data.current_response.set_status_code("403"); }
 	}
-	else
-		state = READY_TO_WRITE;
+	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
+		handler_data.current_response.set_status_code("505");
+	else if (!server.is_http_command_allowed(get_request_string(handler_data.current_request.type), loc))
+		handler_data.current_response.set_status_code("405");
+
+	if (handler_data.current_response.status_code.empty())
+	{
+		// Build the CGI
+		std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
+		if (!cgi.empty())
+		{
+			cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
+			if (data::get_file_size(cgi) == 0)
+			{
+				handler_data.current_response.set_status_code("404");
+				state = READY_TO_WRITE;
+			}
+			else
+				new_request_cgi(fd_map);
+		}
+		else state = READY_TO_WRITE;
+	}
+	else state = READY_TO_WRITE;
 
 	// Set last_request for debugging purposes
 	last_request = handler_data.current_request;
@@ -269,15 +284,17 @@ void Connection::new_response(void)
 	Location loc = server.get_location(handler_data.current_request.path);
 	
 	if (handler_data.current_response.status_code.empty())
-		handler_data.current_response.set_status_code("200");
-	if (handler_data.current_request.type == DELETE)
-		new_response_delete(server, loc);
-	else
 	{
-		if (handler_data.cgi != nullptr)
-			new_response_cgi(server, loc);
+		handler_data.current_response.set_status_code("200");
+		if (handler_data.current_request.type == DELETE)
+			new_response_delete(server, loc);
 		else
-			new_response_get(server, loc);
+		{
+			if (handler_data.cgi != nullptr)
+				new_response_cgi(server, loc);
+			else
+				new_response_get(server, loc);
+		}
 	}
 
 	if (state == READY_TO_WRITE)
