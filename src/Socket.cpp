@@ -125,5 +125,7 @@ void Socket::add_server_ref(std::unique_ptr<Server>& server_ref)
 
 sockfd_t Socket::get_fd(void) const { return socket_fd; }
 
+bool Socket::should_destroy(void) const { return false; }
+
 
 } // namespace webserv

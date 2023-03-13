@@ -19,6 +19,8 @@ class Pollable
 
 	virtual short get_events(sockfd_t fd) const = 0;
 
+	virtual bool should_destroy(void) const = 0;
+
 	protected:
 	virtual void on_pollin(pollable_map_t& fd_map) = 0;
 	virtual void on_pollout(pollable_map_t& fd_map) = 0;

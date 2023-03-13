@@ -11,7 +11,7 @@
 
 	"servers": [
 		{
-			"listen": 9000,
+			"listen": 8080,
 			"host": "0.0.0.0",
 			"server_names": ["localhost", "hello.com"],
 			"client_body_size": 1000,
@@ -20,8 +20,11 @@
 			"error_pages": {
 				"404": "404.html",
 				"403": "403.html",
-				"500": "500.html"
+				"500": "500.html",
+				"405": "405.html"
 			},
+
+			"allowed_methods": ["GET"],
 
 			"root": "var/www/html",
 
@@ -29,7 +32,11 @@
 				"/": {
 					"allowed_methods": ["GET"],
 					"root": "var/www/html",
-					"index": ""
+					"index": "",
+					"auto_index": true,
+					"CGI": {
+						".py": "hello there"
+					}
 				},
 				"/images/": {
 					"auto_index": true
@@ -40,7 +47,6 @@
 				"/pages/":{
 					"auto_index": true
 				}
-
 			}
 		},
 

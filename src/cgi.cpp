@@ -1,4 +1,6 @@
 #include "CGI.h"
+#include <stdexcept>
+#include <unistd.h>
 
 namespace webserv {
 
@@ -47,21 +49,17 @@ namespace env
 
 } // namespace env
 
-CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
+CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::string const& path)
 {
+	std::cout << "Lauching new CGI" << std::endl;
 	//setting up the pipes
 	pipe(pipes.in);
 	pipe(pipes.out);
 
 	pid = fork();
 	if(pid < 0)
-	{
-		// TODO: fork error
-		// Fork unavailable, therefore server error
-		std::cerr << "fork not available: " << strerror(errno);
-		// Response builder should check pid and send error-page
-		return ;
-	}
+		// Fork unavailable THROW, needs to be caught
+		throw std::runtime_error(std::string {"CGI::CGI() failed to fork: "} + strerror(errno) );
 
 	// Child process directly turns into the CGI and becomes unavailable until completed
 	if(pid == 0) // child process
@@ -70,37 +68,27 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		dup2(pipes.in[0], STDIN_FILENO); close(pipes.in[0]); close(pipes.in[1]);
 		dup2(pipes.out[1], STDOUT_FILENO); close(pipes.out[1]); close(pipes.out[0]);
 
-		// Build cgi-environment
-		// std::vector<std::string> env = cgi::env_init();
-		// cgi::env_set_value(env, "REMOTE_USER", "hman");
-		// cgi::env_set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
-		// cgi::env_set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
-		// // cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-		// cgi::env_set_value(env, "REQUEST_METHOD", "POST");
-
+		// Build char** out of array
 		char* env_array[env.size() + 1];
 		env::to_string_array(env_array, env);
 
 		// Build argv
 		std::vector<char*> exec_argv;
-		std::string cgi_exec = "/usr/local/bin/python3"; //server.get_cgi(handler_data.current_request.path, loc);
+		std::string cgi_exec = server.get_root(loc) + "/" + path;//server.get_cgi(loc, path);
 
-		if (cgi_exec.empty())
-		{
-			// TODO: Error
-		}
-
+		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
-		exec_argv.push_back(strdup("cgi-bin/upload_file.py"));
 		exec_argv.push_back(NULL);
 
 		// Actual execution
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
-			// TODO: Server error, send error-page (We are in child though, not that easy)
-			std::cerr << "execve: Error" << std::endl;
+			std::string status = "status: 500 Internal Server Error\r\n";
+			std::cout << status << std::endl;
+			std::cerr << "CGI::CGI() execve error" << std::endl;
 			for (auto* p : exec_argv)
 				free(p);
+			exit(1);
 		}
 	}
 	if (pid > 0) //parent process
@@ -109,10 +97,6 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc)
 		fcntl(pipes.out[0], F_SETFL, O_NONBLOCK);
 
 		close(pipes.in[0]);
-
-		// TODO: SET READY TO WRITE TO CGI
-
-		//close(handler_data.pipes.in[1]);
 		close(pipes.out[1]);
 	}
 }
@@ -163,22 +147,18 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 		buffer_out.resize(read_size);
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
 }
+
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
 	// WRITE TO CGI
-	// std::cout << "Writing to CGI";
 	if (buffer_in.empty())
-	{
-		// std::cout << ": Buffer empty";
 		return ;
-	}
 
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
 	{
-		// TODO: Error-code. Something went wrong, can't write full size
-		std::cerr << ": Can't write full buffer to CGI";
+		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 	}
 	std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
 
@@ -188,7 +168,9 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
-	std::cout << "CGi-POLLHUP";
+	std::cerr << "CGI-POLLHUP" << std::endl;
 }
+
+bool CGI::should_destroy(void) const { return pid < 0; }
 
 } // namespace webserv

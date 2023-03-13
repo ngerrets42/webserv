@@ -19,11 +19,11 @@ class Connection : public Pollable
 	public:
 	enum State
 	{
-		READY_TO_READ = 0,
-		READING,
-		READY_TO_WRITE,
-		WRITING,
-		CLOSE
+		READY_TO_READ = 0,	// Waiting for REQUEST
+		READING,			// Receiving the body of the REQUEST
+		READY_TO_WRITE,		// Ready to send RESPONSE
+		WRITING,			// Sending body of RESPONSE
+		CLOSE				// Connection needs to be closed
 	};
 
 	Connection(sockfd_t connection_fd, addr_t address, Socket* parent);
@@ -44,6 +44,8 @@ class Connection : public Pollable
 	State get_state(void) const;
 	virtual sockfd_t get_fd(void) const override;
 
+	virtual bool should_destroy(void) const override;
+
 	virtual short get_events(sockfd_t fd) const override;
 
 	protected:
@@ -55,12 +57,12 @@ class Connection : public Pollable
 	private:
 
 	void new_request(pollable_map_t& fd_map);
-	void new_request_post(pollable_map_t& fd_map);
+	void new_request_cgi(pollable_map_t& fd_map);
 	void continue_request(void);
 
 	void new_response(void);
 	void new_response_get(Server const& server, Location const& loc);
-	void new_response_post(Server const& server, Location const& loc);
+	void new_response_cgi(Server const& server, Location const& loc);
 	void new_response_delete(Server const& server, Location const& loc);
 	void continue_response(pollable_map_t& fd_map);
 

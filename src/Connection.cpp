@@ -11,6 +11,7 @@
 #include <cstring>
 #include <exception>
 #include <sstream>
+#include <sys/_types/_size_t.h>
 #include <sys/_types/_ssize_t.h>
 #include <sys/poll.h>
 #include <sys/wait.h>
@@ -18,8 +19,6 @@
 #include <unordered_map>
 
 namespace webserv {
-
-// TODO: Delete connection when CLOSED
 
 // CONSTRUCTORS
 Connection::Connection(sockfd_t connection_fd, addr_t address, Socket* parent)
@@ -48,11 +47,12 @@ Connection::HandlerData::HandlerData()
 // POLL
 void Connection::on_pollhup(pollable_map_t& fd_map)
 {
+	(void)fd_map;
 	// Connection interrupted, remove self from fd_map
 	std::cout << "Connection::on_pollhup" << std::endl;
-	fd_map.erase(get_fd());
-	// TODO: change this?:
-	delete this;
+
+	// Set self to close, so the connection can be closed by an external observer
+	state = CLOSE;
 }
 
 void Connection::on_pollin(pollable_map_t& fd_map)
@@ -86,41 +86,74 @@ void Connection::on_pollout(pollable_map_t& fd_map)
 short Connection::get_events(sockfd_t fd) const
 {
 	(void)fd;
-	short events = POLLHUP | POLLIN;
+	short events = POLLHUP;
 	if (state == READY_TO_WRITE || state == WRITING)
 		events |= POLLOUT;
+	else if (state == READING || state == READY_TO_READ)
+		events |= POLLIN;
 	return (events);
 }
 
-void Connection::new_request_post(pollable_map_t& fd_map)
+static void close_cgi(pollable_map_t& fd_map, CGI* cgi)
+{
+	fd_map.erase(cgi->get_in_fd());
+	fd_map.erase(cgi->get_out_fd());
+	delete cgi;
+}
+
+void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	// Build cgi-environment
 	std::vector<std::string> env = env::initialize();
 	// cgi::env_set_value(env, "REMOTE_USER", "hman");
-	env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
+	if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
+		env::set_value(env, "CONTENT_LENGTH",handler_data.current_request.fields["content-length"]);
 	env::set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
 	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
-	env::set_value(env, "REQUEST_METHOD", "POST");
+	if (handler_data.current_request.type == POST)
+		env::set_value(env, "REQUEST_METHOD", "POST");
+	else
+		env::set_value(env, "REQUEST_METHOD", "GET");
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = serv.get_location(handler_data.current_request.path);
-	handler_data.cgi = new CGI(env, serv, loc);
+
+	// No content length means no body to send to the CGI
+	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
+		state = READY_TO_WRITE;
+	else
+	{
+		// Read content length
+		try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
+		catch (std::exception& e)
+		{
+			std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
+			handler_data.current_response.set_status_code("500");
+			return ;
+		}
+	}
+
+	try { handler_data.cgi = new CGI(env, serv, loc, handler_data.current_request.path); }
+	catch (std::exception& e)
+	{
+		std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
+		delete handler_data.cgi;
+		handler_data.current_response.set_status_code("500");
+		return ;
+	}
 
 	handler_data.cgi->buffer_in = handler_data.buffer; // Push leftover buffer into the CGI buffer
 	handler_data.cgi->buffer_in.pop_back();
 
+	// Add fds to map for polling
 	fd_map.insert({handler_data.cgi->get_in_fd(), handler_data.cgi});
 	fd_map.insert({handler_data.cgi->get_out_fd(), handler_data.cgi});
 
-	try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
-	catch (std::exception& e)
-	{
-		// TODO: Error-code & Close CGI
-		std::cerr << e.what() << std::endl;
-	}
-	handler_data.received_size = handler_data.buffer.size();
-	std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size;
+	// Amount of data already received
+	handler_data.received_size = handler_data.cgi->buffer_in.size();
+	std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size << " - ";
 
+	// We received everything already, no need to continue READING
 	if (handler_data.received_size >= handler_data.content_size)
 		// Already received everything
 		state = READY_TO_WRITE;
@@ -129,24 +162,56 @@ void Connection::new_request_post(pollable_map_t& fd_map)
 // Request building
 void Connection::new_request(pollable_map_t& fd_map)
 {
+	// Initial request and response conditions
 	state = READING;
 	handler_data = HandlerData();
+	handler_data.current_response = Response();
+
+	// receive the HTTP header
 	handler_data.buffer = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&]{
 		this->state = CLOSE;
 	});
 	handler_data.current_request = request_build(handler_data.buffer);
 
-	// TODO: check request validity
-	// 400 if bad request
-	// send 413 if content-length above max body size
-	// check HTTP version (return 505 if not HTTP\0.9, HTTP\1.0 or HTTP\1.1)
-	// check valid method (501 if not GET, POST or DELETE; 405 if not allowed)
+	Server& server = parent->get_server(handler_data.current_request.fields["host"]);
+	Location loc = server.get_location(handler_data.current_request.path);
 
-	// Build the CGI
-	if (handler_data.current_request.type == POST)
-		new_request_post(fd_map);
-	else
-		state = READY_TO_WRITE;
+	// Get the content length for validation check
+	size_t content_length = 0;
+	if (handler_data.current_request.fields.find("content-length") != handler_data.current_request.fields.end())
+	{
+		try { content_length = std::stoul(handler_data.current_request.fields["content-length"]); }
+		catch (std::exception& e) { handler_data.current_response.set_status_code("403"); }
+	}
+
+	// Initial request validations
+	if (handler_data.current_request.validity == INVALID) handler_data.current_response.set_status_code("400");
+	else if (!server.is_http_command_allowed(get_request_string(handler_data.current_request.type), loc))
+		handler_data.current_response.set_status_code("405");
+	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
+		handler_data.current_response.set_status_code("505");
+	else if (content_length > server.get_client_max_body_size(loc))
+		handler_data.current_response.set_status_code("403");
+
+	// When there is no status response code
+	if (handler_data.current_response.status_code.empty())
+	{
+		// Build the CGI
+		std::string cgi = server.get_cgi(loc, handler_data.current_request.path);
+		if (!cgi.empty())
+		{
+			cgi = server.get_root(loc) + "/" + handler_data.current_request.path;
+			if (data::get_file_size(cgi) == 0)
+			{
+				handler_data.current_response.set_status_code("404");
+				state = READY_TO_WRITE;
+			}
+			else
+				new_request_cgi(fd_map);
+		}
+		else state = READY_TO_WRITE;
+	}
+	else state = READY_TO_WRITE;
 
 	// Set last_request for debugging purposes
 	last_request = handler_data.current_request;
@@ -217,31 +282,35 @@ static std::string content_type_from_ext(std::string const& path)
 void Connection::new_response(void)
 {
 	state = WRITING;
-	handler_data.current_response = Response();
 
 	// Get the Server from host
 	Socket& socket = *parent;
 	Server& server = socket.get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
 	
-	handler_data.current_response.set_status_code("200");
-
-	switch (handler_data.current_request.type)
+	if (handler_data.current_response.status_code.empty())
 	{
-		case GET: new_response_get(server, loc); break;
-		case POST: new_response_post(server, loc); break;
-		case DELETE: new_response_delete(server, loc); break;
-		default: break; // TODO: error-page
+		if (handler_data.current_request.type == DELETE)
+			new_response_delete(server, loc);
+		else
+		{
+			if (handler_data.cgi != nullptr)
+				new_response_cgi(server, loc);
+			else
+				new_response_get(server, loc);
+		}
 	}
 
 	if (state == READY_TO_WRITE)
 		return ;
 
 	// In case of error-code
-	if (handler_data.current_response.status_code != "200")
+	if (!handler_data.current_response.status_code.empty())
 	{
 		std::cout << '(' << socket_fd << "): "
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
+
+		handler_data.current_request.fields["connection"] = "close";
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
 
 		handler_data.current_response.content_length.clear();
@@ -255,7 +324,7 @@ void Connection::new_response(void)
 			if (!handler_data.file)
 			{
 				std::cerr << " open failed; " << std::endl;
-				handler_data.current_response.content_length = "0";
+				handler_data.current_response.content_length.clear();
 			}
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
@@ -333,13 +402,14 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	}
 }
 
-void Connection::new_response_post(Server const& server, Location const& loc)
+void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
 	if (handler_data.cgi->buffer_out.empty())
 	{
 		state = READY_TO_WRITE;
 		return ;
 	}
+	std::cout << "Connection::new_response_cgi" << std::endl;
 
 	handler_data.current_response.content_type = "text/plain";
 
@@ -372,7 +442,7 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 
 void Connection::continue_response(pollable_map_t& fd_map)
 {
-	if (handler_data.current_request.type == POST)
+	if (handler_data.cgi != nullptr)
 	{
 		if (handler_data.cgi->buffer_out.empty())
 			return ;
@@ -428,6 +498,8 @@ sockfd_t Connection::get_fd(void) const
 {
 	return (socket_fd);
 }
+
+bool Connection::should_destroy(void) const { return state == CLOSE; }
 
 std::string Connection::get_ip(void) const
 {

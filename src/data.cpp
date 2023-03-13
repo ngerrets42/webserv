@@ -59,7 +59,21 @@ namespace data
 		buffer.resize(istream.gcount());
 		ssize_t send_size = send(fd, buffer);
 		if (send_size < 0 || static_cast<size_t>(send_size) != buffer.size())
+		{
 			std::cerr << "send_size != buffer.size()" << std::endl;
+			if (send_size < 0)
+				return (false);
+
+			std::cout << "send_file {\n" 
+			<< "buffer.size(): " << buffer.size() << '\n'
+			<< "send_size: " << send_size << '\n'
+			<< "istream pos before: " << istream.tellg() << '\n';
+		
+			istream.seekg(istream.tellg() - static_cast<std::ifstream::pos_type>(buffer.size() - send_size));
+
+			std::cout << "istream pos after: " << istream.tellg() << std::endl;
+
+		}
 		return (!istream.eof());
 	}
 
