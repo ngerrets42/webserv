@@ -115,6 +115,7 @@ int main(int argc, char **argv)
 		// for (auto& pair : fd_map) pair.second->on_post_poll();
 	}
 
+	// Freeing and cleaning
 	for (auto& pair : fd_map)
 	{
 		bool skip = false;

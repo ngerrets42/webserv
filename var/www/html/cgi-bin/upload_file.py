@@ -7,7 +7,11 @@ sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
 import cgi, sys, os
 import cgitb; cgitb.enable()
 sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
-form = cgi.FieldStorage()
+# try
+# 	form = cgi.FieldStorage()
+# except IOError, e:
+# 	print("Python: Error!")
+# 	os.exit()
 
 
 print("content-type: text/html\n")
