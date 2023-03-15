@@ -64,7 +64,6 @@ bool Location::is_http_command_allowed(std::string const & http_command) const{
 	}
 }
 
-
 std::string Location::get_cgi_path(std::string const & path) {
 	if(cgi.empty() || (path.find('.',0) == std::string::npos)){
 		return std::string();
@@ -243,6 +242,14 @@ std::pair<std::string, std::string> Server::get_cgi(Location & location, std::st
 			}
 			return result;
 		}
+	}
+}
+
+std::string const & Server::get_redirection(Location const & location) const{
+	if (location.redirect.empty()){
+		return redirect;
+	} else {
+		return location.redirect;
 	}
 }
 

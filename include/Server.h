@@ -80,6 +80,7 @@ class Server{
 		bool								is_auto_index_on(Location const & location) const; //will return true autoindex for location is on
 		std::string const &					get_index_page(Location const & location) const; //will return the index page for the location
 		std::pair<std::string, std::string>	get_cgi(Location & location, std::string const & path) const; //will return the path to the cgi binary or script
+		std::string const &					get_redirection(Location const & location) const; //will return the url of the redirection if set
 };
 
 } //namespace webserv
