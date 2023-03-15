@@ -64,6 +64,7 @@ class Connection : public Pollable
 	void new_response_get(Server const& server, Location const& loc);
 	void new_response_cgi(Server const& server, Location const& loc);
 	void new_response_delete(Server const& server, Location const& loc);
+	void new_response_redirect(Server const& server, Location const& loc);
 	void continue_response(pollable_map_t& fd_map);
 
 	Request build_request(std::string buffer);
