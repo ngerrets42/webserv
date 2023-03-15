@@ -326,7 +326,7 @@ void Connection::new_response(void)
 	
 	if (handler_data.current_response.status_code.empty() || handler_data.current_response.status_code == "200" || handler_data.current_response.status_code == "201")
 	{
-		if (!server.get_redirect(loc).empty())
+		if (!server.get_redirection(loc).empty())
 			new_response_redirect(server, loc);
 		else if (handler_data.current_request.type == DELETE)
 			new_response_delete(server, loc);
@@ -491,8 +491,9 @@ void Connection::new_response_redirect(Server const& server, Location const& loc
 {
 	std::cout << "Connection::new_response_redirect" << std::endl;
 
-	handler_data.current_response.add_http_header("location", server.get_redirect(loc));
+	handler_data.current_response.add_http_header("location", server.get_redirection(loc));
 	handler_data.current_response.set_status_code("301");
+	handler_data.current_response.add_http_header("content-length", "0");
 }
 
 void Connection::new_response_delete(Server const& server, Location const& loc)

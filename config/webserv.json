@@ -35,6 +35,9 @@
 					"index": "",
 					"auto_index": true,
 					"CGI": [".py"]
+				},
+				"/redirect/": {
+					"redirect": "../pages/"
 				}
 			}
 		},

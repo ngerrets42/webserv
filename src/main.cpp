@@ -104,6 +104,18 @@ int main(int argc, char **argv)
 		}
 	}
 
+	for (auto& pair : fd_map)
+	{
+		bool skip = false;
+		for (auto& ptr : sockets)
+		{
+			if (ptr->get_fd() == pair.first)
+				skip = true;
+		}
+		if (!skip && pair.second->get_fd() != -1)
+			delete pair.second;
+	}
+
 	std::cout << "losing webserv^\nBye!" << std::endl;
 	return (EXIT_SUCCESS);
 }
