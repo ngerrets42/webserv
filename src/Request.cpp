@@ -50,6 +50,8 @@ void request_print(Request const& request, std::ostream& out)
 
 void parse_header_fields(std::unordered_map<std::string, std::string>& fields, std::vector<char>& buffer, std::stringstream& buffer_stream)
 {
+	// std::cout << "Start of buffer {" << std::string(buffer.data(), buffer.size()) << '}' << std::endl;
+
 	std::string word;
 	while (!buffer_stream.eof())
 	{
@@ -96,6 +98,9 @@ void parse_header_fields(std::unordered_map<std::string, std::string>& fields, s
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
 	else
 		std::cout << "tg == " << tg << std::endl;;
+	
+	// std::cout << "Left over buffer {" << std::string(buffer.data(), buffer.size()) << '}' << std::endl;
+
 }
 
 // This consumes the part of the buffer that's used
@@ -134,6 +139,9 @@ Request request_build(std::vector<char>& buffer)
 	parse_header_fields(request.fields, buffer, buffer_stream);
 
 	request.validity = VALID;
+	std::cout << "REQUEST: " << std::endl;
+	request_print(request);
+
 	return (request);
 }
 

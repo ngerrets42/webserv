@@ -87,12 +87,12 @@ short Connection::get_events(sockfd_t fd) const
 {
 	(void)fd;
 	short events = POLLHUP;
-	if (handler_data.cgi != nullptr)
-	{
-		if (!handler_data.cgi->buffer_out.empty())
-			events |= POLLOUT;
-	}
-	else if (state == READY_TO_WRITE || state == WRITING) && ()
+	// if (handler_data.cgi != nullptr)
+	// {
+	// 	if (!handler_data.cgi->buffer_out.empty())
+	// 		events |= POLLOUT;
+	// } else
+	if (state == READY_TO_WRITE || state == WRITING)
 		events |= POLLOUT;
 	else if (state == READING || state == READY_TO_READ)
 		events |= POLLIN;
@@ -498,7 +498,7 @@ void Connection::continue_response(pollable_map_t& fd_map)
 				// TODO: Error-code. Something went wrong, can't write full size
 				std::cerr << "Can't write full buffer to CGI";
 			}
-			handler_data.cgi->buffer_out.clear();
+			else handler_data.cgi->buffer_out.clear();
 		}
 
 		int wstatus;
