@@ -265,18 +265,19 @@ void Connection::new_request(pollable_map_t& fd_map)
 
 void Connection::continue_request(void)
 {
-	// if (handler_data.cgi != nullptr && handler_data.cgi->get_events(handler_data.cgi->get_out_fd()) & POLLIN)
-	// {
-	// 	state = READY_TO_WRITE;
-	// 	return ;
-	// }
-	// Only happens during POST usually
 	// Receive data from connection
-	if (!handler_data.cgi->buffer_in.empty())
+	int wstatus;
+	int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
+	if (rpid > 0)
 	{
-		// std::cerr << "Buffer in isn't empty!" << std::endl;
+		std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+		handler_data.cgi->destroy = true;
+		state = READY_TO_WRITE;
 		return ;
 	}
+
+	if (!handler_data.cgi->buffer_in.empty())
+		return ;
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
 		std::cerr << "SETTING STATE TO CLOSE" << std::endl;
@@ -288,16 +289,10 @@ void Connection::continue_request(void)
 		<< "receiving data " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
 
 	if (state == CLOSE)
-	{
-		handler_data.cgi->destroy = true;
 		return ;
-	}
 
 	if (handler_data.received_size >= handler_data.content_size)
-	{
-		handler_data.cgi->destroy = true;
 		state = READY_TO_WRITE;
-	}
 }
 
 static std::string content_type_from_ext(std::string const& path)
@@ -331,7 +326,9 @@ void Connection::new_response(void)
 	
 	if (handler_data.current_response.status_code.empty() || handler_data.current_response.status_code == "200" || handler_data.current_response.status_code == "201")
 	{
-		if (handler_data.current_request.type == DELETE)
+		if (!server.get_redirect(loc).empty())
+			new_response_redirect(server, loc);
+		else if (handler_data.current_request.type == DELETE)
 			new_response_delete(server, loc);
 		else
 		{
@@ -346,7 +343,9 @@ void Connection::new_response(void)
 		return ;
 
 	// In case of error-code
-	if (!handler_data.current_response.status_code.empty() && handler_data.current_response.status_code != "200" && handler_data.current_response.status_code != "201")
+	if (!handler_data.current_response.status_code.empty()
+		&& handler_data.current_response.status_code.front() != '2' // Codes starting with 2 are OK etc
+		&& handler_data.current_response.status_code.front() != '3') // Codes starting with 3 are redirects
 	{
 		std::cout << '(' << socket_fd << "): "
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
@@ -488,6 +487,14 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 		handler_data.cgi->buffer_out.clear();
 }
 
+void Connection::new_response_redirect(Server const& server, Location const& loc)
+{
+	std::cout << "Connection::new_response_redirect" << std::endl;
+
+	handler_data.current_response.add_http_header("location", server.get_redirect(loc));
+	handler_data.current_response.set_status_code("301");
+}
+
 void Connection::new_response_delete(Server const& server, Location const& loc)
 {
 	std::cout << "Connection::new_response_delete" << std::endl;
@@ -510,7 +517,7 @@ void Connection::continue_response(pollable_map_t& fd_map)
 
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-		if (rpid <= 0 || handler_data.cgi->destroy)
+		if (rpid > 0 || handler_data.cgi->destroy)
 		{
 			fd_map.erase(handler_data.cgi->get_in_fd());
 			fd_map.erase(handler_data.cgi->get_out_fd());
