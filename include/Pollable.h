@@ -21,10 +21,12 @@ class Pollable
 
 	virtual bool should_destroy(void) const = 0;
 
+	virtual void on_post_poll(pollable_map_t& fd_map) { (void)fd_map; };
 	protected:
 	virtual void on_pollin(pollable_map_t& fd_map) = 0;
 	virtual void on_pollout(pollable_map_t& fd_map) = 0;
 	virtual void on_pollhup(pollable_map_t& fd_map) = 0;
+	virtual void on_pollnval(pollable_map_t& fd_map) { (void)fd_map; };
 };
 
 
