@@ -273,7 +273,10 @@ void Connection::continue_request(void)
 	// Only happens during POST usually
 	// Receive data from connection
 	if (!handler_data.cgi->buffer_in.empty())
+	{
+		// std::cerr << "Buffer in isn't empty!" << std::endl;
 		return ;
+	}
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
 		std::cerr << "SETTING STATE TO CLOSE" << std::endl;
@@ -285,10 +288,14 @@ void Connection::continue_request(void)
 		<< "receiving data " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
 
 	if (state == CLOSE)
+	{
+		handler_data.cgi->destroy = true;
 		return ;
+	}
 
 	if (handler_data.received_size >= handler_data.content_size)
 	{
+		handler_data.cgi->destroy = true;
 		state = READY_TO_WRITE;
 	}
 }

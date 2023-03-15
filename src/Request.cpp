@@ -73,8 +73,8 @@ void parse_header_fields(std::unordered_map<std::string, std::string>& fields, s
 		std::getline(buffer_stream, value);
 
 		// Field case insensitive
-		std::transform(value.begin(), value.end(), value.begin(),
-			[](unsigned char c) { return std::tolower(c); });
+		// std::transform(value.begin(), value.end(), value.begin(),
+		// 	[](unsigned char c) { return std::tolower(c); });
 
 		if (value.empty())
 		{
@@ -97,9 +97,9 @@ void parse_header_fields(std::unordered_map<std::string, std::string>& fields, s
 	if (tg > 0)
 		buffer.erase(buffer.begin(), buffer.begin() + tg);
 	else
-		std::cout << "tg == " << tg << std::endl;;
+		std::cout << "tg == " << tg << std::endl;
 	
-	// std::cout << "Left over buffer {" << std::string(buffer.data(), buffer.size()) << '}' << std::endl;
+	std::cout << "Left over buffer {" << std::string(buffer.data(), buffer.size()) << '}' << std::endl;
 
 }
 
@@ -138,8 +138,8 @@ Request request_build(std::vector<char>& buffer)
 	std::getline(buffer_stream, word); // skip line
 	parse_header_fields(request.fields, buffer, buffer_stream);
 
-	request.validity = VALID;
 	std::cout << "REQUEST: " << std::endl;
+	request.validity = VALID;
 	request_print(request);
 
 	return (request);

@@ -161,14 +161,20 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 {
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
-	if (write_size != static_cast<ssize_t>(buffer_in.size()))
+	if (write_size < 0)
 	{
-		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
+		std::cerr << "Warning: write() returned -1" << std::endl;
+		close(pipes.in[1]);
 	}
+	if (write_size != static_cast<ssize_t>(buffer_in.size()))
+		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 	std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
 
 	if (write_size > 0)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
+	
+	if (destroy)
+		close(pipes.in[1]);
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map)
