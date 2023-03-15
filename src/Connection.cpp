@@ -37,7 +37,7 @@ Connection::~Connection()
 	{
 		close(handler_data.cgi->get_in_fd());
 		close(handler_data.cgi->get_out_fd());
-		delete handler_data.cgi;
+		// delete handler_data.cgi;
 	}
 
 	close(socket_fd);
@@ -74,6 +74,7 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 			fd_map.erase(handler_data.cgi->get_in_fd());
 			fd_map.erase(handler_data.cgi->get_out_fd());
 			delete handler_data.cgi;
+			handler_data.cgi = nullptr;
 			state = CLOSE;
 		}
 	}
