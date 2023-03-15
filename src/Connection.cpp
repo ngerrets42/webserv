@@ -56,7 +56,7 @@ Connection::HandlerData::HandlerData()
 void Connection::reset_time_remaining(void)
 {
 	// std::cout << "time reset" << std::endl;
-	time_remain = CONNECTION_LIFETIME;
+	last_time = std::time(nullptr);
 }
 
 // POLL
@@ -78,16 +78,10 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 		}
 	}
 
-	// static size_t last_time = std::time(nullptr);
-
-	// size_t curr_time = std::time(nullptr);
-	// if (time_remain > curr_time - last_time)
-	// 	time_remain -= curr_time - last_time;
-	// else
-	// 	state = CLOSE;
-	// if (last_time != curr_time)
-	// 	std::cout << "on post poll time remain: " << time_remain << std::endl;
-	// last_time = curr_time;
+	size_t curr_time = std::time(nullptr);
+	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
+	if (curr_time - last_time >= CONNECTION_LIFETIME)
+		state = CLOSE;
 }
 
 void Connection::on_pollhup(pollable_map_t& fd_map)

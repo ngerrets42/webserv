@@ -87,7 +87,7 @@ class Connection : public Pollable
 
 	State state;
 
-	size_t time_remain;
+	size_t last_time;
 
 	struct HandlerData
 	{
