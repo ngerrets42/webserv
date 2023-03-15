@@ -11,6 +11,7 @@
 namespace webserv {
 
 #define HTTP_HEADER_BUFFER_SIZE 8192
+#define CONNECTION_LIFETIME 10
 
 class Socket;
 
@@ -48,10 +49,14 @@ class Connection : public Pollable
 
 	virtual short get_events(sockfd_t fd) const override;
 
+	void reset_time_remaining(void);
+	virtual void on_post_poll(pollable_map_t& fd_map) override;
+
 	protected:
 	virtual void on_pollin(pollable_map_t& fd_map) override;
 	virtual void on_pollout(pollable_map_t& fd_map) override;
 	virtual void on_pollhup(pollable_map_t& fd_map) override;
+	virtual void on_pollnval(pollable_map_t& fd_map) override;
 
 	// functions
 	private:
@@ -82,7 +87,7 @@ class Connection : public Pollable
 
 	State state;
 
-	// TODO: add timer incase of halted connection
+	size_t last_time;
 
 	struct HandlerData
 	{

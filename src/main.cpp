@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <memory>
 #include <sys/signal.h>
+#include <ctime>
 #include <unordered_map>
 
 #define TIMEOUT 1000
@@ -50,7 +51,7 @@ static bool s_run = true;
 int main(int argc, char **argv)
 {
 	// TODO: Remove
-	(void)std::atexit([]() { system("leaks -q webserv"); });
+	// (void)std::atexit([]() { system("leaks -q webserv"); });
 
 
 	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
@@ -90,18 +91,28 @@ int main(int argc, char **argv)
 		size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
 		if (amount < 0)
 			std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
-		if (amount <= 0) continue ;
+
+		// if (amount == 0)
+		// 	continue;
+
+		// std::cout << "desc: ";
+		// for (auto& pair : fd_map)
+		// 	std::cout << pair.first << ", ";
+		// std::cout << std::endl;
 
 		for (struct pollfd& pfd : fds)
 		{
+			if (fd_map.find(pfd.fd) == fd_map.end())
+				continue ;
 			if (pfd.revents != 0)
 			{
-				if (fd_map.find(pfd.fd) == fd_map.end())
-					continue ;
 				// Notify the connection/socket/cgi that a new event needs to be handled
 				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map);
 			}
+			else fd_map.at(pfd.fd)->on_post_poll(fd_map);
 		}
+
+		// for (auto& pair : fd_map) pair.second->on_post_poll();
 	}
 
 	for (auto& pair : fd_map)

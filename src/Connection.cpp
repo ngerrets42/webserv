@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <exception>
 #include <sstream>
 #include <sys/_types/_size_t.h>
@@ -25,12 +26,20 @@ Connection::Connection(sockfd_t connection_fd, addr_t address, Socket* parent)
 :	socket_fd(connection_fd),
 	address(address),
 	parent(parent),
-	state(READY_TO_READ) {}
+	state(READY_TO_READ) { reset_time_remaining(); }
 
 // Unused
 Connection::~Connection()
 {
 	std::cout << '(' << socket_fd << "): " << "Connection closed and destroyed." << std::endl;
+
+	if (handler_data.cgi != nullptr)
+	{
+		close(handler_data.cgi->get_in_fd());
+		close(handler_data.cgi->get_out_fd());
+		delete handler_data.cgi;
+	}
+
 	close(socket_fd);
 }
 
@@ -44,7 +53,37 @@ Connection::HandlerData::HandlerData()
 	received_size(0),
 	cgi(nullptr) {}
 
+void Connection::reset_time_remaining(void)
+{
+	// std::cout << "time reset" << std::endl;
+	last_time = std::time(nullptr);
+}
+
 // POLL
+void Connection::on_pollnval(pollable_map_t& fd_map)
+{
+	std::cout << "Connection::on_pollnval" << std::endl;
+}
+
+void Connection::on_post_poll(pollable_map_t& fd_map)
+{
+	if (handler_data.cgi != nullptr)
+	{
+		if (handler_data.cgi->destroy)
+		{
+			fd_map.erase(handler_data.cgi->get_in_fd());
+			fd_map.erase(handler_data.cgi->get_out_fd());
+			delete handler_data.cgi;
+			state = CLOSE;
+		}
+	}
+
+	size_t curr_time = std::time(nullptr);
+	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
+	if (curr_time - last_time >= CONNECTION_LIFETIME)
+		state = CLOSE;
+}
+
 void Connection::on_pollhup(pollable_map_t& fd_map)
 {
 	(void)fd_map;
@@ -57,6 +96,7 @@ void Connection::on_pollhup(pollable_map_t& fd_map)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
+	std::cout << "Connection::on_pollin"  << std::endl;
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
@@ -68,6 +108,7 @@ void Connection::on_pollin(pollable_map_t& fd_map)
 
 void Connection::on_pollout(pollable_map_t& fd_map)
 {
+	std::cout << "Connection::on_pollout"  << std::endl;
 	// Send response OR continue sending response
 	switch (state)
 	{
@@ -95,7 +136,15 @@ short Connection::get_events(sockfd_t fd) const
 	if (state == READY_TO_WRITE || state == WRITING)
 		events |= POLLOUT;
 	else if (state == READING || state == READY_TO_READ)
-		events |= POLLIN;
+	{
+		// if (handler_data.cgi != nullptr)
+		// {
+		// 	if (handler_data.cgi->buffer_in.empty())
+		// 		events |= POLLIN;
+		// }
+		// else
+			events |= POLLIN;
+	}
 	return (events);
 }
 
@@ -189,6 +238,7 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 // Request building
 void Connection::new_request(pollable_map_t& fd_map)
 {
+	reset_time_remaining();
 	// Initial request and response conditions
 	state = READING;
 	handler_data = HandlerData();
@@ -271,7 +321,7 @@ void Connection::continue_request(void)
 	if (rpid > 0)
 	{
 		std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
-		handler_data.cgi->destroy = true;
+		// handler_data.cgi->destroy = true;
 		state = READY_TO_WRITE;
 		return ;
 	}
@@ -293,6 +343,8 @@ void Connection::continue_request(void)
 
 	if (handler_data.received_size >= handler_data.content_size)
 		state = READY_TO_WRITE;
+	
+	reset_time_remaining();
 }
 
 static std::string content_type_from_ext(std::string const& path)
@@ -317,6 +369,7 @@ static std::string content_type_from_ext(std::string const& path)
 // Response building
 void Connection::new_response(void)
 {
+	reset_time_remaining();
 	state = WRITING;
 
 	// Get the Server from host
@@ -339,8 +392,26 @@ void Connection::new_response(void)
 		}
 	}
 
-	if (state == READY_TO_WRITE)
-		return ;
+	// if (handler_data.cgi != nullptr && handler_data.cgi->destroy)
+	// {
+	// 	std::cout << "deleting cgi" << std::endl;
+	// 	delete handler_data.cgi;
+	// 	state = CLOSE;
+	// 	// return ;
+	// }
+
+	if (handler_data.cgi != nullptr && handler_data.cgi->buffer_out.empty())
+	{
+		if (!handler_data.cgi->destroy)
+		{
+			state = READY_TO_WRITE;
+			return ;
+		}
+		else
+		{
+			handler_data.current_request.fields["connection"] = "close";
+		}
+	}
 
 	// In case of error-code
 	if (!handler_data.current_response.status_code.empty()
@@ -453,11 +524,7 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
 	if (handler_data.cgi->buffer_out.empty())
-	{
-		// std::cout << "Outbuffer empty" << std::endl;
-		state = READY_TO_WRITE;
 		return ;
-	}
 	std::cout << "Connection::new_response_cgi" << std::endl;
 
 	handler_data.current_response.content_type = "text/plain";
@@ -513,7 +580,8 @@ void Connection::continue_response(pollable_map_t& fd_map)
 				// TODO: Error-code. Something went wrong, can't write full size
 				std::cerr << "Can't write full buffer to CGI";
 			}
-			else handler_data.cgi->buffer_out.clear();
+			else
+				handler_data.cgi->buffer_out.clear();
 		}
 
 		int wstatus;
@@ -527,8 +595,9 @@ void Connection::continue_response(pollable_map_t& fd_map)
 			// TODO: check to keep
 			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 			state = CLOSE; // Close is default unless keep-alive
-			if (handler_data.current_request.fields["connection"] == "keep-alive")
-				state = READY_TO_READ;
+			return ;
+			handler_data.current_request.fields["connection"] = "close";
+			// 	state = READY_TO_READ;
 		}
 	}
 	if (!handler_data.custom_page.empty())
@@ -540,13 +609,16 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		if (handler_data.current_request.fields["connection"] == "keep-alive")
 			state = READY_TO_READ;
 		handler_data.custom_page.clear();
+		return ;
 	}
-	else if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
+	if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
 	{
 		state = CLOSE; // Close is default unless keep-alive
 		if (handler_data.current_request.fields["connection"] == "keep-alive")
 			state = READY_TO_READ;
+		return ;
 	}
+	reset_time_remaining();
 }
 
 // GETTERS

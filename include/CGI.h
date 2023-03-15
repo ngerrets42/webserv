@@ -37,6 +37,7 @@ namespace webserv {
 		virtual void on_pollin(pollable_map_t& fd_map) override; // Read from the CGI to Server
 		virtual void on_pollout(pollable_map_t& fd_map) override; // Write from Server to CGI
 		virtual void on_pollhup(pollable_map_t& fd_map) override;
+		virtual void on_pollnval(pollable_map_t& fd_map) override;
 
 		private:
 		int pid;

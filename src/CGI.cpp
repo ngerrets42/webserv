@@ -1,4 +1,5 @@
 #include "CGI.h"
+#include "Pollable.h"
 #include <stdexcept>
 #include <unistd.h>
 
@@ -137,8 +138,10 @@ int CGI::get_out_fd(void) const
 
 short CGI::get_events(sockfd_t fd) const
 {
-	short events = POLLIN;
-	if (fd == pipes.in[1] && !buffer_in.empty())
+	short events = 0;
+	if (fd == pipes.out[0] && buffer_out.empty())
+		events |= POLLIN;
+	else if (fd == pipes.in[1] && !buffer_in.empty())
 		events |= POLLOUT;
 	return (events);
 }
@@ -146,7 +149,7 @@ short CGI::get_events(sockfd_t fd) const
 void CGI::on_pollin(pollable_map_t& fd_map)
 {
 	// READ FROM CGI
-	std::cout << "Reading from CGI";
+	std::cout << "CGI::on_pollin"  << std::endl;
 
 	buffer_out.resize(MAX_SEND_BUFFER_SIZE);
 	ssize_t read_size = read(pipes.out[0], buffer_out.data(), MAX_SEND_BUFFER_SIZE);
@@ -159,13 +162,16 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
+	std::cout << "CGI::on_pollout"  << std::endl;
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
-	if (write_size < 0)
+	if (write_size == 0)
 	{
-		std::cerr << "Warning: write() returned -1" << std::endl;
+		std::cerr << "Warning: write() returned 0" << std::endl;
 		close(pipes.in[1]);
 	}
+	else if (write_size < 0)
+		return ;
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
 		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 	std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
@@ -177,10 +183,15 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 		close(pipes.in[1]);
 }
 
+void CGI::on_pollnval(pollable_map_t& fd_map)
+{
+	std::cout << "CGI::on_pollnval" << std::endl;
+	destroy = true;
+}
+
 void CGI::on_pollhup(pollable_map_t& fd_map)
 {
-	if (!destroy)
-		std::cerr << "CGI-POLLHUP" << std::endl;
+	std::cout << "CGI::on_pollhup" << std::endl;
 	destroy = true;
 }
 
