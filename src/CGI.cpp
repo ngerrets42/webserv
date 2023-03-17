@@ -1,4 +1,5 @@
 #include "CGI.h"
+#include "Core.h"
 #include "Pollable.h"
 #include <stdexcept>
 #include <unistd.h>
@@ -155,6 +156,8 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 	ssize_t read_size = read(pipes.out[0], buffer_out.data(), MAX_SEND_BUFFER_SIZE);
 	if (read_size < 0)
 		buffer_out.clear();
+	else if (read_size == 0)
+		close(pipes.out[0]);
 	else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
 		buffer_out.resize(read_size);
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
@@ -163,13 +166,11 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
 	std::cout << "CGI::on_pollout"  << std::endl;
+
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size == 0)
-	{
-		std::cerr << "Warning: write() returned 0" << std::endl;
 		close(pipes.in[1]);
-	}
 	else if (write_size < 0)
 		return ;
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
@@ -179,22 +180,45 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 	if (write_size > 0)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
 	
-	if (destroy)
+	// if (destroy)
+	// 	close(pipes.in[1]);
+}
+
+void CGI::close_pipes(void)
+{
+	if (pipes.in[1] != -1)
+	{
 		close(pipes.in[1]);
+		pipes.in[1] = -1;
+	}
+	if (pipes.out[0] != -1)
+	{
+		close(pipes.out[0]);
+		pipes.out[0] = -1;
+	}
 }
 
 void CGI::on_pollnval(pollable_map_t& fd_map)
 {
 	std::cout << "CGI::on_pollnval" << std::endl;
-	destroy = true;
+	// destroy = true;
 }
 
-void CGI::on_pollhup(pollable_map_t& fd_map)
+void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
 	std::cout << "CGI::on_pollhup" << std::endl;
-	destroy = true;
+	// destroy = true;
+	fd_map.erase(fd);
+	close(fd);
+	if (fd == pipes.in[1])
+		pipes.in[1] = -1;
+	if (fd == pipes.out[0])
+		pipes.out[0] = -1;
 }
 
-bool CGI::should_destroy(void) const { return pid < 0; }
+bool CGI::should_destroy(void) const
+{
+	return (false);
+}
 
 } // namespace webserv

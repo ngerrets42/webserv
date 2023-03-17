@@ -1,5 +1,6 @@
 #include "Socket.h"
 #include "Connection.h"
+#include "Core.h"
 #include <memory>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -66,8 +67,6 @@ Socket::Socket(Socket const& other) { (void)other; }
 Socket& Socket::operator=(Socket const& other) { (void)other; return *this; }
 
 // POLLING
-void Socket::on_pollhup(pollable_map_t& fd_map) { (void)fd_map; }
-
 void Socket::on_pollin(pollable_map_t& fd_map)
 {
 	accept_connections(fd_map);

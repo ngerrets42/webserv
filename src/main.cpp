@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 			if (pfd.revents != 0)
 			{
 				// Notify the connection/socket/cgi that a new event needs to be handled
-				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map);
+				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map, pfd.fd);
 			}
 			else fd_map.at(pfd.fd)->on_post_poll(fd_map);
 		}
@@ -130,10 +130,6 @@ int main(int argc, char **argv)
 		}
 		if (!skip)
 		{
-			if (pair.second->get_fd() > 0)
-			{
-				Connection* c = (Connection*)pair.second;
-			}
 			delete pair.second;
 			fd_map.erase(pair.first);
 		}

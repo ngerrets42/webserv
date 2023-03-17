@@ -15,7 +15,7 @@ class Pollable
 
 	virtual sockfd_t get_fd(void) const = 0;
 
-	void notify(short revents, pollable_map_t& fd_map);
+	void notify(short revents, pollable_map_t& fd_map, sockfd_t fd);
 
 	virtual short get_events(sockfd_t fd) const = 0;
 
@@ -25,7 +25,7 @@ class Pollable
 	protected:
 	virtual void on_pollin(pollable_map_t& fd_map) = 0;
 	virtual void on_pollout(pollable_map_t& fd_map) = 0;
-	virtual void on_pollhup(pollable_map_t& fd_map) = 0;
+	virtual void on_pollhup(pollable_map_t& fd_map, sockfd_t fd) { (void)fd_map; (void)fd; };
 	virtual void on_pollnval(pollable_map_t& fd_map) { (void)fd_map; };
 };
 

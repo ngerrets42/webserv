@@ -37,7 +37,7 @@ Connection::~Connection()
 	// {
 	// 	close(handler_data.cgi->get_in_fd());
 	// 	close(handler_data.cgi->get_out_fd());
-	// 	// delete handler_data.cgi;
+	// 	delete handler_data.cgi;
 	// }
 
 	close(socket_fd);
@@ -67,17 +67,19 @@ void Connection::on_pollnval(pollable_map_t& fd_map)
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
-	// if (handler_data.cgi != nullptr)
-	// {
-	// 	if (handler_data.cgi->destroy)
-	// 	{
-	// 		fd_map.erase(handler_data.cgi->get_in_fd());
-	// 		fd_map.erase(handler_data.cgi->get_out_fd());
-	// 		delete handler_data.cgi;
-	// 		handler_data.cgi = nullptr;
-	// 		state = CLOSE;
-	// 	}
-	// }
+	if (handler_data.cgi != nullptr)
+	{
+		int wstatus;
+		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
+		if (rpid > 0)
+		{
+			fd_map.erase(handler_data.cgi->get_in_fd());
+			fd_map.erase(handler_data.cgi->get_out_fd());
+			delete handler_data.cgi;
+			handler_data.cgi = nullptr;
+			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+		}
+	}
 
 	size_t curr_time = std::time(nullptr);
 	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
@@ -85,12 +87,27 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 		state = CLOSE;
 }
 
-void Connection::on_pollhup(pollable_map_t& fd_map)
+void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
 	(void)fd_map;
+	(void)fd;
 	// Connection interrupted, remove self from fd_map
 	std::cout << "Connection::on_pollhup" << std::endl;
 
+	if (handler_data.cgi != nullptr)
+	{
+		handler_data.cgi->close_pipes();
+		int wstatus;
+		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
+		if (rpid > 0)
+		{
+			fd_map.erase(handler_data.cgi->get_in_fd());
+			fd_map.erase(handler_data.cgi->get_out_fd());
+			delete handler_data.cgi;
+			handler_data.cgi = nullptr;
+			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+		}
+	}
 	// Set self to close, so the connection can be closed by an external observer
 	state = CLOSE;
 }
@@ -109,7 +126,7 @@ void Connection::on_pollin(pollable_map_t& fd_map)
 
 void Connection::on_pollout(pollable_map_t& fd_map)
 {
-	std::cout << "Connection::on_pollout"  << std::endl;
+	// std::cout << "Connection::on_pollout"  << std::endl;
 	// Send response OR continue sending response
 	switch (state)
 	{
@@ -317,18 +334,32 @@ void Connection::new_request(pollable_map_t& fd_map)
 void Connection::continue_request(void)
 {
 	// Receive data from connection
+	static size_t cgi_counter = 0;
+
+
 	int wstatus;
 	int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 	if (rpid > 0)
 	{
 		std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
-		// handler_data.cgi->destroy = true;
 		state = READY_TO_WRITE;
 		return ;
 	}
 
 	if (!handler_data.cgi->buffer_in.empty())
+	{
+		std::cout << "buffer_in not empty" << std::endl;
+		cgi_counter++;
+		if (cgi_counter > 10000)
+		{
+			handler_data.cgi->close_pipes();
+			std::cout << "CGI pipes closed" << std::endl;
+		}
 		return ;
+	}
+
+	cgi_counter = 0;
+
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
 		std::cerr << "SETTING STATE TO CLOSE" << std::endl;
@@ -629,7 +660,7 @@ sockfd_t Connection::get_fd(void) const
 	return (socket_fd);
 }
 
-bool Connection::should_destroy(void) const { return state == CLOSE; }
+bool Connection::should_destroy(void) const { return state == CLOSE && handler_data.cgi == nullptr; }
 
 std::string Connection::get_ip(void) const
 {

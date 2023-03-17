@@ -38,7 +38,7 @@ class Socket : public Pollable
 	protected:
 	virtual void on_pollin(pollable_map_t& fd_map) override;
 	virtual void on_pollout(pollable_map_t& fd_map) override;
-	virtual void on_pollhup(pollable_map_t& fd_map) override;
+	// virtual void on_pollhup(pollable_map_t& fd_map, sockfd_t fd) override;
 
 	void accept_connections(pollable_map_t& fd_map);
 
