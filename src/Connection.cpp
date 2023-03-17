@@ -33,12 +33,12 @@ Connection::~Connection()
 {
 	std::cout << '(' << socket_fd << "): " << "Connection closed and destroyed." << std::endl;
 
-	if (handler_data.cgi != nullptr)
-	{
-		close(handler_data.cgi->get_in_fd());
-		close(handler_data.cgi->get_out_fd());
-		// delete handler_data.cgi;
-	}
+	// if (handler_data.cgi != nullptr)
+	// {
+	// 	close(handler_data.cgi->get_in_fd());
+	// 	close(handler_data.cgi->get_out_fd());
+	// 	// delete handler_data.cgi;
+	// }
 
 	close(socket_fd);
 }
@@ -67,17 +67,17 @@ void Connection::on_pollnval(pollable_map_t& fd_map)
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
-	if (handler_data.cgi != nullptr)
-	{
-		if (handler_data.cgi->destroy)
-		{
-			fd_map.erase(handler_data.cgi->get_in_fd());
-			fd_map.erase(handler_data.cgi->get_out_fd());
-			delete handler_data.cgi;
-			handler_data.cgi = nullptr;
-			state = CLOSE;
-		}
-	}
+	// if (handler_data.cgi != nullptr)
+	// {
+	// 	if (handler_data.cgi->destroy)
+	// 	{
+	// 		fd_map.erase(handler_data.cgi->get_in_fd());
+	// 		fd_map.erase(handler_data.cgi->get_out_fd());
+	// 		delete handler_data.cgi;
+	// 		handler_data.cgi = nullptr;
+	// 		state = CLOSE;
+	// 	}
+	// }
 
 	size_t curr_time = std::time(nullptr);
 	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
