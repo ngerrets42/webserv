@@ -68,7 +68,7 @@ std::string Location::get_cgi_path(std::string const & path) {
 	if(cgi.empty() || (path.find('.',0) == std::string::npos)){
 		return std::string();
 	}
-	for (int i = 0; i < cgi.size(); ++i){
+	for (size_t i = 0; i < cgi.size(); ++i){
 		size_t ext_size = cgi[i].size();
 		size_t pos = path.find(cgi[i], 0);
 		while (pos != std::string::npos){ 

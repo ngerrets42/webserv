@@ -149,13 +149,6 @@ short Connection::get_events(sockfd_t fd) const
 	return (events);
 }
 
-static void close_cgi(pollable_map_t& fd_map, CGI* cgi)
-{
-	fd_map.erase(cgi->get_in_fd());
-	fd_map.erase(cgi->get_out_fd());
-	delete cgi;
-}
-
 void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
@@ -194,7 +187,6 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	env::set_value(env, "PATH_TRANSLATED",  serv.get_root(loc) + cgi_pair.second);
 	env::set_value(env, "QUERY_STRING", handler_data.current_request.path_arguments);
 
-	
 	// No content length means no body to send to the CGI
 	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
 		state = READY_TO_WRITE;
@@ -253,6 +245,14 @@ void Connection::new_request(pollable_map_t& fd_map)
 
 	Server& server = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = server.get_location(handler_data.current_request.path);
+
+	// Check for index page and alter path
+	if (handler_data.current_request.path.back() == '/')
+	{
+		std::string const& indexp = server.get_index_page(loc);
+		if (!indexp.empty())
+			handler_data.current_request.path += indexp;
+	}
 
 	// Get the content length for validation check
 	size_t content_length = 0;
@@ -483,10 +483,7 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	// path is a directory
 	if (fpath.back() == '/')
 	{
-		std::string const& indexp = server.get_index_page(loc);
-		if (!indexp.empty())
-			fpath += indexp;
-		else if (server.is_auto_index_on(loc))
+		if (server.is_auto_index_on(loc))
 		{
 			handler_data.custom_page = build_index(root + handler_data.current_request.path, handler_data.current_request.path);
 			if (handler_data.custom_page.empty())
