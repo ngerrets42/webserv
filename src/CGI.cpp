@@ -88,7 +88,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 		// Actual execution
 		// TODO: Something goes wrong when execve fails (no rights to execute?)
 
-		std::cerr << "cgi executing: " << exec_argv[0] << std::endl;
+		std::cerr << "CGI (" << pipes.in[1] << ", " << pipes.out[0] << ") executing: " << exec_argv[0] << std::endl;
 
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
@@ -112,7 +112,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 CGI::~CGI()
 {
-	std::cout << "deleting CGI" << std::endl;
+	std::cerr << "deleting CGI (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 	close(pipes.in[1]);
 	close(pipes.out[0]);
 }
@@ -150,7 +150,7 @@ short CGI::get_events(sockfd_t fd) const
 void CGI::on_pollin(pollable_map_t& fd_map)
 {
 	// READ FROM CGI
-	std::cout << "CGI::on_pollin"  << std::endl;
+	std::cout << "CGI::on_pollin (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
 	buffer_out.resize(MAX_SEND_BUFFER_SIZE);
 	ssize_t read_size = read(pipes.out[0], buffer_out.data(), MAX_SEND_BUFFER_SIZE);
@@ -165,7 +165,7 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
-	std::cout << "CGI::on_pollout"  << std::endl;
+	std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
@@ -184,29 +184,38 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 	// 	close(pipes.in[1]);
 }
 
+void CGI::close_in(void)
+{
+	if (pipes.in[1] != -1)
+	{
+		close(pipes.in[1]);
+		// pipes.in[1] = -1;
+	}
+}
+
 void CGI::close_pipes(void)
 {
 	if (pipes.in[1] != -1)
 	{
 		close(pipes.in[1]);
-		pipes.in[1] = -1;
+		// pipes.in[1] = -1;
 	}
 	if (pipes.out[0] != -1)
 	{
 		close(pipes.out[0]);
-		pipes.out[0] = -1;
+		// pipes.out[0] = -1;
 	}
 }
 
 void CGI::on_pollnval(pollable_map_t& fd_map)
 {
-	std::cout << "CGI::on_pollnval" << std::endl;
+	std::cout << "CGI::on_pollnval (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 	// destroy = true;
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
-	std::cout << "CGI::on_pollhup" << std::endl;
+	std::cout << "CGI::on_pollhup (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 	// destroy = true;
 	fd_map.erase(fd);
 	close(fd);

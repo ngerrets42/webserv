@@ -32,14 +32,6 @@ Connection::Connection(sockfd_t connection_fd, addr_t address, Socket* parent)
 Connection::~Connection()
 {
 	std::cout << '(' << socket_fd << "): " << "Connection closed and destroyed." << std::endl;
-
-	// if (handler_data.cgi != nullptr)
-	// {
-	// 	close(handler_data.cgi->get_in_fd());
-	// 	close(handler_data.cgi->get_out_fd());
-	// 	delete handler_data.cgi;
-	// }
-
 	close(socket_fd);
 }
 
@@ -92,10 +84,12 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 	(void)fd_map;
 	(void)fd;
 	// Connection interrupted, remove self from fd_map
-	std::cout << "Connection::on_pollhup" << std::endl;
+	// std::cout << "Connection::on_pollhup" << std::endl;
 
 	if (handler_data.cgi != nullptr)
 	{
+		if (handler_data.cgi->get_in_fd() != -1)
+			std::cout << '(' << socket_fd << "): " << "Waiting for CGI to finish..." << std::endl;
 		handler_data.cgi->close_pipes();
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
@@ -105,7 +99,7 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 			fd_map.erase(handler_data.cgi->get_out_fd());
 			delete handler_data.cgi;
 			handler_data.cgi = nullptr;
-			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+			std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 		}
 	}
 	// Set self to close, so the connection can be closed by an external observer
@@ -114,7 +108,7 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout << "Connection::on_pollin"  << std::endl;
+	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
@@ -135,11 +129,11 @@ void Connection::on_pollout(pollable_map_t& fd_map)
 		default: return;
 	}
 
-	if (state == CLOSE)
-	{
-		fd_map.erase(get_fd());
-		delete this;
-	}
+	// if (state == CLOSE)
+	// {
+	// 	fd_map.erase(get_fd());
+	// 	delete this;
+	// }
 }
 
 short Connection::get_events(sockfd_t fd) const
@@ -213,7 +207,7 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 		try { handler_data.content_size = std::stoul(handler_data.current_request.fields["content-length"]); }
 		catch (std::exception& e)
 		{
-			std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
+			std::cerr << '(' << socket_fd << "): " << "Connection::new_request_cgi(): " << e.what() << std::endl;
 			handler_data.current_response.set_status_code("500");
 			return ;
 		}
@@ -222,8 +216,8 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	try { handler_data.cgi = new CGI(env, serv, loc, handler_data.current_request.path); }
 	catch (std::exception& e)
 	{
-		std::cerr << "Connection::new_request_cgi(): " << e.what() << std::endl;
-		delete handler_data.cgi;
+		std::cerr << '(' << socket_fd << "): " << "Connection::new_request_cgi(): " << e.what() << std::endl;
+		// delete handler_data.cgi;
 		handler_data.current_response.set_status_code("500");
 		return ;
 	}
@@ -237,7 +231,7 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 
 	// Amount of data already received
 	handler_data.received_size = handler_data.cgi->buffer_in.size();
-	std::cout << "received data " << handler_data.received_size << '/' << handler_data.content_size << " - ";
+	std::cout << '(' << socket_fd << "): " << "received data " << handler_data.received_size << '/' << handler_data.content_size << " - ";
 
 	// We received everything already, no need to continue READING
 	if (handler_data.received_size >= handler_data.content_size)
@@ -285,7 +279,7 @@ void Connection::new_request(pollable_map_t& fd_map)
 		handler_data.current_response.set_status_code("405");
 	else if ( std::set<std::string>{"HTTP/0.9", "HTTP/1.0", "HTTP/1.1"}.count(handler_data.current_request.http_version) == 0)
 		handler_data.current_response.set_status_code("505");
-	else if (content_length > server.get_client_max_body_size(loc))
+	else if (server.get_client_max_body_size(loc) != 0 && content_length > server.get_client_max_body_size(loc))
 		handler_data.current_response.set_status_code("413");
 
 	// When there is no status response code
@@ -333,30 +327,35 @@ void Connection::new_request(pollable_map_t& fd_map)
 
 void Connection::continue_request(void)
 {
+	if (handler_data.cgi == nullptr)
+	{
+		std::cout << '(' << socket_fd << "): " << "CGI no longer exists." << std::endl;
+		state = CLOSE;
+		return ;
+	}
+
 	// Receive data from connection
 	static size_t cgi_counter = 0;
-
-
 	int wstatus;
 	int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 	if (rpid > 0)
 	{
-		std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+		std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 		state = READY_TO_WRITE;
 		return ;
 	}
 
-	if (!handler_data.cgi->buffer_in.empty())
-	{
-		std::cout << "buffer_in not empty" << std::endl;
-		cgi_counter++;
-		if (cgi_counter > 10000)
-		{
-			handler_data.cgi->close_pipes();
-			std::cout << "CGI pipes closed" << std::endl;
-		}
-		return ;
-	}
+	// if (!handler_data.cgi->buffer_in.empty())
+	// {
+	// 	std::cout << "buffer_in not empty" << std::endl;
+	// 	cgi_counter++;
+	// 	if (cgi_counter > 10000)
+	// 	{
+	// 		handler_data.cgi->close_pipes();
+	// 		std::cout << "CGI pipes closed" << std::endl;
+	// 	}
+	// 	return ;
+	// }
 
 	cgi_counter = 0;
 
@@ -401,8 +400,22 @@ static std::string content_type_from_ext(std::string const& path)
 // Response building
 void Connection::new_response(void)
 {
-	reset_time_remaining();
 	state = WRITING;
+
+	if (handler_data.cgi != nullptr)
+	{
+		if (!handler_data.cgi->buffer_in.empty())
+		{
+			// Give CGI more time
+			return ;
+		}
+		else if (handler_data.cgi->get_in_fd() != -1)
+		{
+			std::cout << '(' << socket_fd << "): " << "No more input, closing CGI-in" << std::endl;
+			// handler_data.cgi->close_in();
+			close(handler_data.cgi->get_in_fd());
+		}
+	}
 
 	// Get the Server from host
 	Socket& socket = *parent;
@@ -434,16 +447,18 @@ void Connection::new_response(void)
 
 	if (handler_data.cgi != nullptr && handler_data.cgi->buffer_out.empty())
 	{
-		if (!handler_data.cgi->destroy)
+		if (handler_data.cgi->get_out_fd() == -1)
+		{
+			handler_data.current_response.set_status_code("500");
+		}
+		else
 		{
 			state = READY_TO_WRITE;
 			return ;
 		}
-		else
-		{
-			handler_data.current_request.fields["connection"] = "close";
-		}
 	}
+
+	reset_time_remaining();
 
 	// In case of error-code
 	if (!handler_data.current_response.status_code.empty()
@@ -615,7 +630,7 @@ void Connection::continue_response(pollable_map_t& fd_map)
 
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-		if (rpid > 0 || handler_data.cgi->destroy)
+		if (rpid > 0)
 		{
 			fd_map.erase(handler_data.cgi->get_in_fd());
 			fd_map.erase(handler_data.cgi->get_out_fd());
@@ -640,8 +655,13 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		handler_data.custom_page.clear();
 		return ;
 	}
+	if (handler_data.file.bad())
+		return ;
+
 	if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
 	{
+		handler_data.file.close();
+		handler_data.file.clear();
 		state = CLOSE; // Close is default unless keep-alive
 		if (handler_data.current_request.fields["connection"] == "keep-alive")
 			state = READY_TO_READ;

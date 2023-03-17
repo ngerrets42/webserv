@@ -19,7 +19,7 @@
 
 			"locations": {
 				"/cgi-bin/": {
-					"client_body_size": 10000000,
+					"client_body_size": 0,
 					"allowed_methods": ["GET", "POST"],
 					"index": "",
 					"auto_index": true,

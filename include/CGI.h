@@ -30,6 +30,7 @@ namespace webserv {
 
 		int get_pid(void) const;
 
+		void close_in(void);
 		void close_pipes(void);
 
 		virtual short get_events(sockfd_t fd) const override;
