@@ -1,27 +1,16 @@
 {
-	"error_pages": {
-		"404": "404.html",
-		"403": "403.html",
-		"500": "500.html"
-	},
-
-	"remote_control_server": {
-		"listen": 6666
-	},
-
 	"servers": [
 		{
 			"listen": 8080,
 			"host": "0.0.0.0",
-			"server_names": ["localhost"],
-			"client_body_size": 100000000,
-			"index": "",
+			"server_names": ["f1r5s17.codam.nl"],
+			"index": "index.html",
 
 			"error_pages": {
-				"404": "404.html",
-				"403": "403.html",
-				"500": "500.html",
-				"405": "405.html"
+				"404": "error_pages/404.html",
+				"403": "error_pages/403.html",
+				"405": "error_pages/405.html",
+				"500": "error_pages/500.html"
 			},
 
 			"allowed_methods": ["GET"],
@@ -29,15 +18,18 @@
 			"root": "var/www/html",
 
 			"locations": {
-				"/": {
+				"/cgi-bin/": {
+					"client_body_size": 2048,
 					"allowed_methods": ["GET", "POST"],
-					"root": "var/www/html",
 					"index": "",
 					"auto_index": true,
-					"CGI": [".py"]
+					"CGI": [".py", ".cgi"]
 				},
-				"/redirect/": {
-					"redirect": "../pages/"
+				"/upload/": {
+					"redirect": "http://files.f1r5s17.codam.nl:8080/"
+				},
+				"/files/": {
+					"redirect": "http://files.f1r5s17.codam.nl:8080/"
 				}
 			}
 		},
@@ -45,25 +37,32 @@
 			"listen": 8080,
 			"host": "0.0.0.0",
 			"server_names": ["files.localhost"],
-			"client_body_size": 1000,
-			"index": "",
-
-			"error_pages": {
-				"404": "404.html",
-				"403": "403.html",
-				"405": "405.html",
-				"500": "500.html"
-			},
 
 			"root": "var/www/upload",
 
 			"locations": {
 				"/": {
+					"allowed_methods": ["GET"],
+					"index": "delete.cgi",
+					"CGI": [".cgi"]
+				},
+				"/files/": {
 					"allowed_methods": ["GET", "DELETE"],
 					"index": "",
 					"auto_index": true
 				}
 			}
+		},
+		{
+			"listen": 8080,
+			"host": "0.0.0.0",
+			"server_names": ["sitemap.localhost"],
+			"client_body_size": 0,
+			"index": "",
+			"auto_index": true,
+			"root": "var/www/html",
+
+			"allowed_methods": ["GET"]
 		}
 	]
 }

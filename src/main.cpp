@@ -1,3 +1,4 @@
+#include "Connection.h"
 #include "Core.h"
 #include "Server.h"
 #include "Socket.h"
@@ -110,10 +111,20 @@ int main(int argc, char **argv)
 		for (auto& ptr : sockets)
 		{
 			if (ptr->get_fd() == pair.first)
+			{
 				skip = true;
+				fd_map.erase(pair.first);
+			}
 		}
-		if (!skip && pair.second->get_fd() != -1)
+		if (!skip)
+		{
+			if (pair.second->get_fd() > 0)
+			{
+				Connection* c = (Connection*)pair.second;
+			}
 			delete pair.second;
+			fd_map.erase(pair.first);
+		}
 	}
 
 	std::cout << "losing webserv^\nBye!" << std::endl;

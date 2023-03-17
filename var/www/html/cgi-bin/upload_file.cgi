@@ -1,23 +1,11 @@
 #!/usr/local/bin/python3
-import sys, os
-sys.stderr.write("upload_file.py: START\n\n\n\n\n\n\n")
-
-sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
-
 import cgi, sys, os
 import cgitb; cgitb.enable()
-sys.stderr.write("LENGTH: \n\n" + os.environ['CONTENT_LENGTH'] + "\n\n")
 form = cgi.FieldStorage()
 
-
-print("content-type: text/html\n")
-
-
+succes = true
 message = None
-
-upload_dir = 'var/www/upload/'
-
-message = form
+upload_dir = 'var/www/upload/files/'
 
 # Test if the file is loaded for the upload
 if 'filename' in form:
@@ -26,11 +14,8 @@ if 'filename' in form:
     open(upload_dir + fn, 'wb').write(fileitem.file.read())
     message = 'The file "' + fn + '" was uploaded successfully'
 else:
+	succes = false
     message = 'No file was uploaded'
-
-# cgi.print_environ()
-# cgi.print_environ_usage()
-# cgi.print_form(form)
 
 replyhtml = """
 <html>
@@ -39,6 +24,10 @@ replyhtml = """
 </body>
 </html>
 """
-print(replyhtml % message)
 
-sys.stderr.write("upload_file.py: END");
+if succes:
+	print("status: 201 Created")
+	print("content-length: " replyhtml.length())
+
+print("content-type: text/html\n")
+print(replyhtml % message)
