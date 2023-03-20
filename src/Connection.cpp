@@ -54,10 +54,10 @@ void Connection::reset_time_remaining(void)
 }
 
 // POLL
-void Connection::on_pollnval(pollable_map_t& fd_map)
-{
-	std::cout << "Connection::on_pollnval" << std::endl;
-}
+// void Connection::on_pollnval(pollable_map_t& fd_map)
+// {
+// 	std::cout << "Connection::on_pollnval" << std::endl;
+// }
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
@@ -67,6 +67,7 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
 		{
+			handler_data.cgi->close_pipes();
 			fd_map.erase(handler_data.cgi->get_in_fd());
 			fd_map.erase(handler_data.cgi->get_out_fd());
 			delete handler_data.cgi;
@@ -409,23 +410,11 @@ void Connection::new_response(void)
 {
 	state = WRITING;
 
-	// TODO: remove?
-	static bool cgi_closed = false;
-
 	if (handler_data.cgi != nullptr)
 	{
 		if (!handler_data.cgi->buffer_in.empty())
-		{
-			// Give CGI more time
 			return ;
-		}
-		if (!cgi_closed)
-		{
-			cgi_closed = true;
-			std::cout << '(' << socket_fd << "): " << "No more input, closing CGI-in" << std::endl;
-			// handler_data.cgi->close_in();
-			close(handler_data.cgi->get_in_fd());
-		}
+		close(handler_data.cgi->get_in_fd());
 	}
 
 	// Get the Server from host
@@ -578,6 +567,8 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 
 void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
+	(void)server;
+	(void)loc;
 	if (handler_data.cgi->buffer_out.empty())
 		return ;
 	std::cout << "Connection::new_response_cgi" << std::endl;
@@ -611,6 +602,8 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 
 void Connection::new_response_redirect(Server const& server, Location const& loc)
 {
+	(void)server;
+	(void)loc;
 	std::cout << "Connection::new_response_redirect" << std::endl;
 
 	handler_data.current_response.add_http_header("location", server.get_redirection(loc));
@@ -620,6 +613,8 @@ void Connection::new_response_redirect(Server const& server, Location const& loc
 
 void Connection::new_response_delete(Server const& server, Location const& loc)
 {
+	(void)server;
+	(void)loc;
 	std::cout << "Connection::new_response_delete" << std::endl;
 }
 
@@ -630,10 +625,9 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		if (!handler_data.cgi->buffer_out.empty())
 		{
 			ssize_t send_data = data::send(socket_fd, handler_data.cgi->buffer_out);
-			if (send_data != handler_data.cgi->buffer_out.size())
+			if (send_data != static_cast<ssize_t>(handler_data.cgi->buffer_out.size()))
 			{
-				// TODO: Error-code. Something went wrong, can't write full size
-				std::cerr << "Can't write full buffer to CGI";
+				// std::cerr << "Can't write full buffer to CGI";
 			}
 			else
 				handler_data.cgi->buffer_out.clear();
@@ -643,16 +637,16 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
 		{
+			handler_data.cgi->close_pipes();
 			fd_map.erase(handler_data.cgi->get_in_fd());
 			fd_map.erase(handler_data.cgi->get_out_fd());
 			delete handler_data.cgi;
 			handler_data.cgi = nullptr;
-			// TODO: check to keep
 			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 			state = CLOSE; // Close is default unless keep-alive
-			return ;
-			handler_data.current_request.fields["connection"] = "close";
-			// 	state = READY_TO_READ;
+			// TODO: Check if this is okay
+			if (handler_data.current_request.fields["connection"] == "keep-alive")
+				state = READY_TO_READ;
 		}
 	}
 	if (!handler_data.custom_page.empty())

@@ -160,6 +160,7 @@ short CGI::get_events(sockfd_t fd) const
 
 void CGI::on_pollin(pollable_map_t& fd_map)
 {
+	(void)fd_map;
 	// READ FROM CGI
 	std::cout << "CGI::on_pollin (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
@@ -176,6 +177,7 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
+	(void)fd_map;
 	// std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
 	// Write body buffer to CGI
@@ -216,12 +218,6 @@ void CGI::close_pipes(void)
 		close(pipes.out[0]);
 		// pipes.out[0] = -1;
 	}
-}
-
-void CGI::on_pollnval(pollable_map_t& fd_map)
-{
-	// std::cout << "CGI::on_pollnval (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
-	// destroy = true;
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
