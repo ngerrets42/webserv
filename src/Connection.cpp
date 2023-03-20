@@ -6,6 +6,7 @@
 #include "data.h"
 #include "html.h"
 
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,6 +16,7 @@
 #include <sys/_types/_size_t.h>
 #include <sys/_types/_ssize_t.h>
 #include <sys/poll.h>
+#include <sys/signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <unordered_map>
@@ -91,6 +93,8 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 		// if (handler_data.cgi->get_in_fd() != -1)
 		// 	std::cout << '(' << socket_fd << "): " << "Waiting for CGI to finish..." << std::endl;
 		handler_data.cgi->close_pipes();
+		// Kill with SIGTERM because otherwise some CGI's will take too long (or get stuck on cgi.FieldStorage())
+		kill(handler_data.cgi->get_pid(), SIGTERM);
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
@@ -187,7 +191,11 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	env::set_value(env, "REMOTE_ADDR", get_ip());
 	env::set_value(env, "REMOTE_HOST", get_ip());
 	env::set_value(env, "GATEWAY_INTERFACE", "CGI/1.1");
-	// env::set_value(env, "REMOTE_USER", "TeamWebserv"); // UNUSED
+
+	static int count = 0;
+	env::set_value(env, "REMOTE_USER", std::to_string(count)); // UNUSED
+	++count;
+
 	// env::set_value(env, "REMOTE_IDENT", "TeamWebserv"); // UNUSED
 
 	env::set_value(env, "SERVER_NAME", "webserv");

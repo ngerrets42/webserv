@@ -1,6 +1,7 @@
 #include "CGI.h"
 #include "Core.h"
 #include "Pollable.h"
+#include <cstring>
 #include <stdexcept>
 #include <unistd.h>
 
@@ -79,7 +80,10 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 		// Build argv
 		std::vector<char*> exec_argv;
-		std::string cgi_exec = server.get_root(loc) + server.get_cgi(loc, path).first;
+
+		std::string cgi_path = server.get_root(loc) + server.get_cgi(loc, path).first;
+		std::string cgi_exec = cgi_path.substr(cgi_path.find_last_of('/') + 1);
+		cgi_path = cgi_path.substr(0, cgi_path.find_last_of('/'));
 
 		// Build argv
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
@@ -90,6 +94,13 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 		std::cerr << "CGI (" << pipes.in[1] << ", " << pipes.out[0] << ") executing: " << exec_argv[0] << std::endl;
 
+		if (chdir(cgi_path.c_str()) != 0)
+		{
+			std::cerr << strerror(errno) << std::endl;
+			std::string status = "status: 500 Internal Server Error\r\n";
+			std::cout << status << std::endl;
+			exit(1);
+		}
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
 			std::string status = "status: 500 Internal Server Error\r\n";
