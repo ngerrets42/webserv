@@ -126,24 +126,24 @@ int main(int argc, char **argv)
 		// for (auto& pair : fd_map) pair.second->on_post_poll();
 	}
 
-	// Freeing and cleaning
-	for (auto& pair : fd_map)
-	{
-		bool skip = false;
-		for (auto& ptr : sockets)
-		{
-			if (ptr->get_fd() == pair.first)
-			{
-				skip = true;
-				fd_map.erase(pair.first);
-			}
-		}
-		if (!skip)
-		{
-			delete pair.second;
-			fd_map.erase(pair.first);
-		}
-	}
+	// // Freeing and cleaning
+	// for (auto& pair : fd_map)
+	// {
+	// 	bool skip = false;
+	// 	for (auto& ptr : sockets)
+	// 	{
+	// 		if (ptr->get_fd() == pair.first)
+	// 		{
+	// 			skip = true;
+	// 			fd_map.erase(pair.first);
+	// 		}
+	// 	}
+	// 	if (!skip)
+	// 	{
+	// 		delete pair.second;
+	// 		fd_map.erase(pair.first);
+	// 	}
+	// }
 
 	std::cout << "losing webserv^\nBye!" << std::endl;
 	return (EXIT_SUCCESS);

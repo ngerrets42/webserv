@@ -165,7 +165,7 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
-	std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+	// std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
@@ -175,7 +175,7 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 		return ;
 	if (write_size != static_cast<ssize_t>(buffer_in.size()))
 		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
-	std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
+	// std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
 
 	if (write_size > 0)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
@@ -209,7 +209,7 @@ void CGI::close_pipes(void)
 
 void CGI::on_pollnval(pollable_map_t& fd_map)
 {
-	std::cout << "CGI::on_pollnval (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+	// std::cout << "CGI::on_pollnval (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 	// destroy = true;
 }
 

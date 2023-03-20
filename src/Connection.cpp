@@ -88,8 +88,8 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 	if (handler_data.cgi != nullptr)
 	{
-		if (handler_data.cgi->get_in_fd() != -1)
-			std::cout << '(' << socket_fd << "): " << "Waiting for CGI to finish..." << std::endl;
+		// if (handler_data.cgi->get_in_fd() != -1)
+		// 	std::cout << '(' << socket_fd << "): " << "Waiting for CGI to finish..." << std::endl;
 		handler_data.cgi->close_pipes();
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
@@ -108,7 +108,7 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
+	// std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
@@ -335,29 +335,28 @@ void Connection::continue_request(void)
 	}
 
 	// Receive data from connection
-	static size_t cgi_counter = 0;
 	int wstatus;
 	int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 	if (rpid > 0)
 	{
 		std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+
+		std::cout << "total data received: " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
 		state = READY_TO_WRITE;
 		return ;
 	}
 
-	// if (!handler_data.cgi->buffer_in.empty())
-	// {
-	// 	std::cout << "buffer_in not empty" << std::endl;
-	// 	cgi_counter++;
-	// 	if (cgi_counter > 10000)
-	// 	{
-	// 		handler_data.cgi->close_pipes();
-	// 		std::cout << "CGI pipes closed" << std::endl;
-	// 	}
-	// 	return ;
-	// }
-
-	cgi_counter = 0;
+	if (!handler_data.cgi->buffer_in.empty())
+	{
+		// std::cout << "buffer_in not empty" << std::endl;
+		// cgi_counter++;
+		// if (cgi_counter > 10000)
+		// {
+		// 	handler_data.cgi->close_pipes();
+		// 	std::cout << "CGI pipes closed" << std::endl;
+		// }
+		return ;
+	}
 
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
@@ -366,8 +365,8 @@ void Connection::continue_request(void)
 	});
 
 	handler_data.received_size += handler_data.cgi->buffer_in.size();
-	std::cout << '(' << socket_fd << "): "
-		<< "receiving data " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
+	// std::cout << '(' << socket_fd << "): "
+	// 	<< "receiving data " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
 
 	if (state == CLOSE)
 		return ;
@@ -402,6 +401,9 @@ void Connection::new_response(void)
 {
 	state = WRITING;
 
+	// TODO: remove?
+	static bool cgi_closed = false;
+
 	if (handler_data.cgi != nullptr)
 	{
 		if (!handler_data.cgi->buffer_in.empty())
@@ -409,8 +411,9 @@ void Connection::new_response(void)
 			// Give CGI more time
 			return ;
 		}
-		else if (handler_data.cgi->get_in_fd() != -1)
+		if (!cgi_closed)
 		{
+			cgi_closed = true;
 			std::cout << '(' << socket_fd << "): " << "No more input, closing CGI-in" << std::endl;
 			// handler_data.cgi->close_in();
 			close(handler_data.cgi->get_in_fd());
