@@ -89,11 +89,9 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
 		exec_argv.push_back(NULL);
 
-		// Actual execution
-		// TODO: Something goes wrong when execve fails (no rights to execute?)
-
 		std::cerr << "CGI (" << pipes.in[1] << ", " << pipes.out[0] << ") executing: " << exec_argv[0] << std::endl;
 
+		// CHange directory
 		if (chdir(cgi_path.c_str()) != 0)
 		{
 			std::cerr << strerror(errno) << std::endl;
@@ -101,6 +99,8 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 			std::cout << status << std::endl;
 			exit(1);
 		}
+
+		// Actual execution
 		if(execve(exec_argv[0], exec_argv.data(), env_array) != 0)
 		{
 			std::string status = "status: 500 Internal Server Error\r\n";
@@ -186,38 +186,25 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 		close(pipes.in[1]);
 	else if (write_size < 0)
 		return ;
-	if (write_size != static_cast<ssize_t>(buffer_in.size()))
-		std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
-	// std::cout << ": " << write_size << " Bytes written to CGI" << std::endl;
+	// if (write_size != static_cast<ssize_t>(buffer_in.size()))
+	// 	std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 
 	if (write_size > 0)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
-	
-	// if (destroy)
-	// 	close(pipes.in[1]);
 }
 
 void CGI::close_in(void)
 {
 	if (pipes.in[1] != -1)
-	{
 		close(pipes.in[1]);
-		// pipes.in[1] = -1;
-	}
 }
 
 void CGI::close_pipes(void)
 {
 	if (pipes.in[1] != -1)
-	{
 		close(pipes.in[1]);
-		// pipes.in[1] = -1;
-	}
 	if (pipes.out[0] != -1)
-	{
 		close(pipes.out[0]);
-		// pipes.out[0] = -1;
-	}
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)

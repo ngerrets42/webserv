@@ -62,8 +62,7 @@ static bool s_run = true;
 int main(int argc, char **argv)
 {
 	// TODO: Remove
-	// (void)std::atexit([]() { system("leaks -q webserv"); });
-
+	(void)std::atexit([]() { system("leaks -q webserv"); });
 
 	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
 
@@ -93,6 +92,7 @@ int main(int argc, char **argv)
 	std::vector<std::unique_ptr<Socket>> sockets = build_sockets(servers);
 	pollable_map_t fd_map = build_map(sockets);
 
+	// SIGINT needs to close the program cleanly
 	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });
 
 	while (s_run)
@@ -102,14 +102,6 @@ int main(int argc, char **argv)
 		size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
 		if (amount < 0)
 			std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
-
-		// if (amount == 0)
-		// 	continue;
-
-		// std::cout << "desc: ";
-		// for (auto& pair : fd_map)
-		// 	std::cout << pair.first << ", ";
-		// std::cout << std::endl;
 
 		for (struct pollfd& pfd : fds)
 		{
@@ -122,29 +114,37 @@ int main(int argc, char **argv)
 			}
 			else fd_map.at(pfd.fd)->on_post_poll(fd_map);
 		}
-
-		// for (auto& pair : fd_map) pair.second->on_post_poll();
 	}
 
-	// // Freeing and cleaning
-	// for (auto& pair : fd_map)
-	// {
-	// 	bool skip = false;
-	// 	for (auto& ptr : sockets)
-	// 	{
-	// 		if (ptr->get_fd() == pair.first)
-	// 		{
-	// 			skip = true;
-	// 			fd_map.erase(pair.first);
-	// 		}
-	// 	}
-	// 	if (!skip)
-	// 	{
-	// 		delete pair.second;
-	// 		fd_map.erase(pair.first);
-	// 	}
-	// }
+	std::cout << "losing webserv^" << std::endl;
+	std::cout << "\n\n === PLEASE WAIT ===\n\n" << std::endl;
 
-	std::cout << "losing webserv^\nBye!" << std::endl;
+	// Remove sockets from fd_map and close them
+	for (auto& uptr : sockets)
+	{
+		close(uptr->get_fd());
+		fd_map.erase(uptr->get_fd());
+	}
+
+	// This loop keeps running until ALL Pollable objects are destroyed
+	// So it can free and close the program properly
+	while (!fd_map.empty())
+	{
+		std::vector<sockfd_t> destroy_vec;
+		for (auto& pair : fd_map)
+		{
+			pair.second->notify(POLLHUP, fd_map, pair.first);
+			if (pair.second->should_destroy())
+				destroy_vec.push_back(pair.first);
+		}
+		for (auto& fd : destroy_vec)
+		{
+			delete fd_map.at(fd);
+			fd_map.erase(fd);
+		}
+	}
+
+	std::cout << "Bye!" << std::endl;
+
 	return (EXIT_SUCCESS);
 }

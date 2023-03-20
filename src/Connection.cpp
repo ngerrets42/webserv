@@ -644,6 +644,7 @@ void Connection::continue_response(pollable_map_t& fd_map)
 			handler_data.cgi = nullptr;
 			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 			state = CLOSE; // Close is default unless keep-alive
+
 			// TODO: Check if this is okay
 			if (handler_data.current_request.fields["connection"] == "keep-alive")
 				state = READY_TO_READ;
