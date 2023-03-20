@@ -1,13 +1,14 @@
 #include "Socket.h"
 #include "Connection.h"
 #include "Core.h"
+#include <arpa/inet.h>
 #include <memory>
 #include <stdexcept>
 #include <sys/socket.h>
 
 namespace webserv {
 
-Socket::Socket(uint16_t _port) : port(_port)
+Socket::Socket(uint16_t _port, std::string const& _host) : port(_port), host(_host)
 {
 	// Settings
 	const int domain = AF_INET;
@@ -29,7 +30,7 @@ Socket::Socket(uint16_t _port) : port(_port)
 
 	// Bind settings
 	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_addr.s_addr = inet_addr(host.c_str());
 	address.sin_port = htons(port);
 	std::memset(address.sin_zero, 0, sizeof(address.sin_zero));
 
@@ -81,6 +82,7 @@ short Socket::get_events(sockfd_t fd) const
 }
 
 uint16_t Socket::get_port(void) const { return port; }
+std::string const& Socket::get_host(void) const { return host; }
 
 void Socket::accept_connections(pollable_map_t& fd_map)
 {

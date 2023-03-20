@@ -114,7 +114,7 @@ static bool set_server_variables(njson::Json::object& serverblock, Server* serve
 			return false;
 		} else {
 			std::string host = it->second->get<std::string>();
-			if (host.compare("localhost") == 0)
+			if (host == "localhost")
 				host = "127.0.0.1";
 			if(!simple_ip_format_check(host)){
 				print_error("host value is not an IPv4 address");
@@ -494,18 +494,20 @@ std::vector<std::unique_ptr<Server>> parse_servers(njson::Json::pointer& root_no
 std::vector<std::unique_ptr<Socket>> build_sockets(std::vector<std::unique_ptr<Server>>& servers)
 {
 	std::vector<std::unique_ptr<Socket>> sockets;
-	std::set<int> ports_to_listen;
+	
+	std::set<std::string> hosts_to_listen;
 
 	for(size_t i = 0; i < servers.size(); ++i){
-		int server_port = servers[i]->port;
-		if(ports_to_listen.count(server_port) == 0){
-			ports_to_listen.insert(server_port);
-			Socket * sock_serv = new Socket(server_port);
+		std::string server_key = servers[i]->host + ':' + std::to_string(servers[i]->port);
+		if(hosts_to_listen.count(server_key) == 0){
+			hosts_to_listen.insert(server_key);
+			Socket * sock_serv = new Socket(servers[i]->port, servers[i]->host);
 			sock_serv->add_server_ref(servers[i]);
 			sockets.emplace_back(sock_serv);
 		} else {
 			for(size_t j = 0; j < sockets.size(); ++j){
-				if(sockets[j]->get_port() == server_port){
+				std::string socket_key = sockets[j]->get_host() + ':' + std::to_string(sockets[j]->get_port());
+				if(socket_key == server_key){
 					sockets[j]->add_server_ref(servers[i]);
 					break;
 				}

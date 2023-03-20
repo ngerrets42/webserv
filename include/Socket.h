@@ -12,7 +12,7 @@ class Socket : public Pollable
 {
 	public:
 	// Constructors
-	Socket(uint16_t _port);
+	Socket(uint16_t _port, std::string const& host = "0.0.0.0");
 
 	virtual ~Socket();
 
@@ -25,6 +25,7 @@ class Socket : public Pollable
 	public:
 	// GETTERS
 	uint16_t get_port(void) const;
+	std::string const& get_host(void) const;
 	Server& get_server(std::string const& host);
 	std::vector<Server*> get_servers(void);
 	void add_server_ref(std::unique_ptr<Server>& server_ref);
@@ -44,6 +45,7 @@ class Socket : public Pollable
 
 	protected:
 	uint16_t port;
+	std::string host;
 	sockfd_t socket_fd;
 	addr_in_t address;
 
