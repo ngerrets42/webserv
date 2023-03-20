@@ -10,14 +10,17 @@ upload_dir = 'files/'
 form = cgi.FieldStorage()
 if 'filename' in form:
 	fileitem = form['filename']
-	uploaded_file_path = os.path.join(upload_dir, os.path.basename(fileitem.filename))
-	with open(uploaded_file_path, 'wb') as fout:
-		while True:
-			chunk = fileitem.file.read(100000)
-			if not chunk:
-				break
-			fout.write (chunk)
-	message = 'The file "' + fileitem.filename + '" was uploaded successfully'
+	if len(fileitem.filename) == 0:
+		message = 'No file was uploaded'
+	else:
+		uploaded_file_path = os.path.join(upload_dir, os.path.basename(fileitem.filename))
+		with open(uploaded_file_path, 'wb') as fout:
+			while True:
+				chunk = fileitem.file.read(100000)
+				if not chunk:
+					break
+				fout.write (chunk)
+		message = 'The file "' + fileitem.filename + '" was uploaded successfully'
 else:
 	success = False
 	message = 'No file was uploaded'

@@ -76,10 +76,15 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 		}
 	}
 
+	if (state == CLOSE) return ;
+
 	size_t curr_time = std::time(nullptr);
 	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
 	if (curr_time - last_time >= CONNECTION_LIFETIME)
+	{
+		std::cout << '(' << socket_fd << "): " << "Connection closing due to timeout" << std::endl;
 		state = CLOSE;
+	}
 }
 
 void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
@@ -405,6 +410,12 @@ static std::string content_type_from_ext(std::string const& path)
 	return (default_type);
 }
 
+std::string build_default_error_page(Response const& response)
+{
+	std::string page = "<html><body>" + response.status_code + ' ' + response.reason + "</body></html>\n\n";
+	return (page);
+}
+
 // Response building
 void Connection::new_response(void)
 {
@@ -472,6 +483,7 @@ void Connection::new_response(void)
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
 
 		handler_data.current_response.content_length = "0";
+		// TODO: default error page
 		if (!error_path.empty())
 		{
 			std::string fpath = server.get_root(loc) + '/' + error_path;
@@ -482,9 +494,17 @@ void Connection::new_response(void)
 			if (!handler_data.file)
 			{
 				std::cerr << " open failed; " << std::endl;
-				handler_data.current_response.content_length = "0";
+				handler_data.custom_page = build_default_error_page(handler_data.current_response);
+				handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
+				handler_data.current_response.content_type = "text/html";
 			}
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
+		}
+		else
+		{
+			handler_data.custom_page = build_default_error_page(handler_data.current_response);
+			handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
+			handler_data.current_response.content_type = "text/html";
 		}
 	}
 
