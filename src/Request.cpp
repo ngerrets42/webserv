@@ -6,6 +6,36 @@
 namespace webserv {
 
 Request::Request() : validity(INVALID) {}
+static char convert_hex_to_dec(char c){
+	if (c >= 'a' && c <= 'f'){
+		return c - 87;
+	} else if ( c >= '0' && c <= '9'){
+		return c - 48;
+	}
+	return -1;
+}
+
+static std::string convert_hex_in_url(std::string const & url_string){
+	std::string str = url_string;
+	size_t pos = 0;
+	while (pos != std::string::npos){
+		pos = str.find('%', pos);
+		if (pos == std::string::npos || pos + 2 > str.size()){
+			break;
+		}
+		int temp = convert_hex_to_dec(str[pos + 1]);
+		int temp2 = convert_hex_to_dec(str[pos + 2]);
+		std::cout << "temp " << temp << " " << temp2 << std::endl;
+		if (temp == -1 || temp2 == -1){
+			pos = pos + 1;
+			continue;
+		}
+		char c = temp * 16 + temp2;
+		str.replace(pos,3,1,c);
+	}
+	str = str.c_str(); 
+	return str;
+}
 
 RequestType get_request_type(std::string const& word)
 {
@@ -122,6 +152,7 @@ Request request_build(std::vector<char>& buffer)
 	
 	buffer_stream >> request.path;
 	if (request.path.length() == 0) return (request); // No path
+	request.path = convert_hex_in_url(request.path);
 
 	size_t pos = request.path.find_first_of('?');
 	if (pos != std::string::npos && pos > 0 && pos < request.path.length())
