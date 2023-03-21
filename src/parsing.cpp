@@ -449,19 +449,16 @@ Server* build_server(njson::Json::pointer& node)
 	if (!node->is<njson::Json::object>())
 	{
 		std::cerr << "Not an object" << std::endl;
+		delete server;
 		return nullptr;
 	}
 
 	njson::Json::object& serverblock = node->get<njson::Json::object>();
 	//make sure that all directives in server block are supported
-	if(check_directives_server_block(serverblock) == false){
-		return nullptr;
-	}
-	
-	if(!set_server_variables(serverblock, server)){
-		return nullptr;
-	}
-	if(!process_locations(serverblock, server)){
+	if(!check_directives_server_block(serverblock)
+	|| !set_server_variables(serverblock, server)
+	|| !process_locations(serverblock, server)) {
+		delete server;
 		return nullptr;
 	}
 	return (server);

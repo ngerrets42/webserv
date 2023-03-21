@@ -6,7 +6,9 @@
 #include <csignal>
 #include <cstddef>
 #include <cstdlib>
+#include <exception>
 #include <memory>
+#include <stdexcept>
 #include <sys/signal.h>
 #include <ctime>
 #include <unordered_map>
@@ -58,67 +60,29 @@ static std::vector<struct pollfd> get_descriptors(pollable_map_t& fd_map)
 	return (fds);
 }
 
-static bool s_run = true;
-int main(int argc, char **argv)
+static void webserv_parsing(
+	std::string const& config_path,
+	std::vector<std::unique_ptr<Socket>>& sockets_out,
+	pollable_map_t& fd_map_out)
 {
-	// TODO: Remove
-	(void)std::atexit([]() { system("leaks -q webserv"); });
-
-	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
-
-	std::string config_path = "config/webserv.json";
-
-	if (argc > 1)
-		config_path = argv[1];
-
 	njson::JsonParser json_parser(config_path);
 	if (json_parser.has_error())
-	{
-		std::cerr << "Can't open file: " << config_path << std::endl;
-		return (EXIT_FAILURE);
-	}
+		throw (std::runtime_error("Can't open file: " + config_path));
 
 	njson::Json::pointer root_node = json_parser.parse();
 	if (root_node->is<std::nullptr_t>())
-	{
-		std::cerr << "Invalid configuration file" << std::endl;
-		return (EXIT_FAILURE);
-	}
+		throw (std::runtime_error("Invalid configuration file."));
 
 	std::vector<std::unique_ptr<Server>> servers = parse_servers(root_node);
 	if (servers.empty())
-		return (EXIT_FAILURE);
+		throw (std::runtime_error("No proper server configuration provided"));
 
-	std::vector<std::unique_ptr<Socket>> sockets = build_sockets(servers);
-	pollable_map_t fd_map = build_map(sockets);
+	sockets_out = build_sockets(servers);
+	fd_map_out = build_map(sockets_out);
+}
 
-	// SIGINT needs to close the program cleanly
-	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });
-
-	while (s_run)
-	{
-		std::vector<struct pollfd> fds = get_descriptors(fd_map);
-
-		size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
-		if (amount < 0)
-			std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
-
-		for (struct pollfd& pfd : fds)
-		{
-			if (fd_map.find(pfd.fd) == fd_map.end())
-				continue ;
-			if (pfd.revents != 0)
-			{
-				// Notify the connection/socket/cgi that a new event needs to be handled
-				fd_map.at(pfd.fd)->notify(pfd.revents, fd_map, pfd.fd);
-			}
-			else fd_map.at(pfd.fd)->on_post_poll(fd_map);
-		}
-	}
-
-	std::cout << "losing webserv^" << std::endl;
-	std::cout << "\n\n === PLEASE WAIT ===\n\n" << std::endl;
-
+static void webserv_cleanup(std::vector<std::unique_ptr<Socket>>& sockets, pollable_map_t& fd_map)
+{
 	// Remove sockets from fd_map and close them
 	for (auto& uptr : sockets)
 	{
@@ -142,6 +106,69 @@ int main(int argc, char **argv)
 			delete fd_map.at(fd);
 			fd_map.erase(fd);
 		}
+	}
+}
+
+// Do a poll-round on all active descriptors in the map
+static void webserv_poll(pollable_map_t& fd_map)
+{
+	std::vector<struct pollfd> fds = get_descriptors(fd_map);
+
+	size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
+	if (amount < 0)
+		std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
+
+	for (struct pollfd& pfd : fds)
+	{
+		if (fd_map.find(pfd.fd) == fd_map.end())
+			continue ;
+		if (pfd.revents != 0)
+		{
+			// Notify the connection/socket/cgi that a new event needs to be handled
+			fd_map.at(pfd.fd)->notify(pfd.revents, fd_map, pfd.fd);
+		}
+		else fd_map.at(pfd.fd)->on_post_poll(fd_map);
+	}
+}
+
+static bool s_run = true;
+int main(int argc, char **argv)
+{
+	constexpr char const* DEFAULT_CONFIG_PATH {"config/webserv.json"};
+
+	// TODO: Remove
+	(void)std::atexit([]() { system("leaks -q webserv"); });
+
+	// TODO: change
+	(void)std::signal(SIGPIPE, [](int i) { (void)i; std::cerr << "SIGPIPE" << std::endl; exit(1); });
+
+	// SIGINT needs to close the program cleanly
+	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });
+
+	// configure where to look for config
+	std::string config_path = DEFAULT_CONFIG_PATH;
+	if (argc > 1)
+		config_path = argv[1];
+
+	try
+	{
+		std::vector<std::unique_ptr<Socket>> sockets;
+		pollable_map_t fd_map;
+		webserv_parsing(config_path, sockets, fd_map);
+
+		while (s_run)
+			webserv_poll(fd_map);
+
+		std::cout << "losing webserv^" << std::endl;
+		std::cout << "\n\n === PLEASE WAIT ===\n\n" << std::endl;
+		webserv_cleanup(sockets, fd_map);
+	}
+	// catch and handle all exceptions during runtime
+	catch (std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		std::cout << "Exception occured, goodbye!" << std::endl;
+		return (EXIT_FAILURE);
 	}
 
 	std::cout << "Bye!" << std::endl;
