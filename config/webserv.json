@@ -23,7 +23,8 @@
 					"allowed_methods": ["GET", "POST"],
 					"index": "",
 					"auto_index": true,
-					"CGI": [".py", ".cgi"]
+					"CGI": [".py", ".cgi"],
+					"upload_directory": "../../upload/files/"
 				},
 				"/upload/": {
 					"redirect": "http://files.f1r5s17.codam.nl:8080/"
