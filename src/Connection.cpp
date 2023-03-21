@@ -123,7 +123,7 @@ void Connection::on_pollin(pollable_map_t& fd_map)
 	switch (state)
 	{
 		case READY_TO_READ: new_request(fd_map); break;
-		case READING: continue_request(); break; // TODO: If reading too long send 408 REQUEST TIMEOUT
+		case READING: continue_request(); break;
 		default: return;
 	}
 }
@@ -483,7 +483,6 @@ void Connection::new_response(void)
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
 
 		handler_data.current_response.content_length = "0";
-		// TODO: default error page
 		if (!error_path.empty())
 		{
 			std::string fpath = server.get_root(loc) + '/' + error_path;
