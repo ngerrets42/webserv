@@ -22,7 +22,7 @@ static bool check_directives_location_block(njson::Json::object& loc){
 		"auto_index",
 		"redirect",
 		"CGI",
-		"upload_path"});
+		"upload_directory"});
 
 	njson::Json::object::iterator it;
 	for(it = loc.begin(); it != loc.end(); ++it){
@@ -406,14 +406,14 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 		}
 	}
 	
-	//setting upload_path
-	it = locationblock.find("upload_path");
+	//setting upload_directory
+	it = locationblock.find("upload_directory");
 	if (it != locationblock.end()){
 		if (it->second->get_type() != njson::Json::STRING){
-			print_error("upload_path needs to be a string");
+			print_error("upload_directory needs to be a string");
 			return false;
 		} else {
-			loc.upload_path_loc = it->second->get<std::string>();
+			loc.upload_directory = it->second->get<std::string>();
 		}
 	}
 	return true;
