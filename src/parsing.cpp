@@ -454,7 +454,7 @@ Server* build_server(njson::Json::pointer& node)
 	}
 
 	njson::Json::object& serverblock = node->get<njson::Json::object>();
-	//make sure that all directives in server block are supported
+	// make sure that all directives in server block are supported
 	if(!check_directives_server_block(serverblock)
 	|| !set_server_variables(serverblock, server)
 	|| !process_locations(serverblock, server)) {

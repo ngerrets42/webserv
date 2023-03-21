@@ -4,7 +4,7 @@ import cgitb; cgitb.enable()
 
 success = True
 message = None
-upload_dir = 'files/'
+upload_dir = os.environ['UPLOAD_DIRECTORY'];
 
 # Test if the file is loaded for the upload
 form = cgi.FieldStorage()

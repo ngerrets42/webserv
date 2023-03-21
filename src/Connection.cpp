@@ -193,7 +193,7 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	if (handler_data.current_request.fields.find("content-type") != handler_data.current_request.fields.end())
 		env::set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
 	
-
+	env::set_value(env, "UPLOAD_DIRECTORY", serv.get_upload_dir(loc));
 	env::set_value(env, "REMOTE_ADDR", get_ip());
 	env::set_value(env, "REMOTE_HOST", get_ip());
 	env::set_value(env, "GATEWAY_INTERFACE", "CGI/1.1");
@@ -480,7 +480,9 @@ void Connection::new_response(void)
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
 
 		handler_data.current_request.fields["connection"] = "close";
+		std::cerr << "GETTING ERROR PATH" << std::endl;
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
+		std::cerr << "ERROR PATH: " << error_path << std::endl;
 
 		handler_data.current_response.content_length = "0";
 		if (!error_path.empty())
