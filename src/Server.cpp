@@ -36,8 +36,8 @@ void Location::add_cgi_extension(std::string const & extention){
 	cgi.push_back(extention);
 }
 
-void Location::set_upload_path(std::string const & upload_path){
-	upload_path_loc = upload_path;
+void Location::set_upload_directory(std::string const & upload_dir){
+	upload_directory = upload_dir;
 }
 
 
@@ -251,6 +251,10 @@ std::string const & Server::get_redirection(Location const & location) const{
 	} else {
 		return location.redirect;
 	}
+}
+
+std::string const & Server::get_upload_dir(Location const & location) const{
+	return location.upload_directory;
 }
 
 } //namespace webserv

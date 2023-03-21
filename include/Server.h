@@ -19,7 +19,7 @@ class Location{
 		std::vector<std::string>						allowed_http_commands; //(inherit if not defined)defines what HTTP request are allowed with this location. 
 		std::string										redirect;	//defines the redirect for this location. The redirect will be code 301 for permanent redirect and this will contain the url that is being redirected to
 		std::vector<std::string>						cgi; //contains the cgi extentions the location support
-		std::string										upload_path_loc; //defines the path for storing files
+		std::string										upload_directory; //defines the path for storing files
 
 		Location(void);
 		Location(std::string const & path); //constructor to create a Location object with the path set
@@ -31,7 +31,7 @@ class Location{
 		void								set_auto_index(bool autoindex_setting);
 		void								set_client_max_body_size(size_t body_size);
 		void								add_cgi_extension(std::string const & extention); //add the cgi extention and the path to the script
-		void								set_upload_path(std::string const & upload_path);
+		void								set_upload_directory(std::string const & upload_dir);
 
 		//getters
 		std::string							get_error_page(int error_code) const; //returns the error page name/path if no error pages been defined return a string object that is empty 
@@ -81,6 +81,7 @@ class Server{
 		std::string const &					get_index_page(Location const & location) const; //will return the index page for the location
 		std::pair<std::string, std::string>	get_cgi(Location & location, std::string const & path) const; //will return the path to the cgi binary or script
 		std::string const &					get_redirection(Location const & location) const; //will return the url of the redirection if set
+		std::string const &					get_upload_dir(Location const & location) const; // will return the upload path set in the location block
 };
 
 } //namespace webserv
