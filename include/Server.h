@@ -12,7 +12,7 @@ class Location{
 	public:
 		std::string										path; //the URI of the location block
 		std::string										root; //(inherit if not defined) root directory for the location.
-		std::string										index; //(inherit if not defined)index page name if not defined will inherit from server
+		std::pair<bool,std::string>						index; //(inherit if not defined)index page name if not defined will inherit from server
 		std::pair<bool, bool>							autoindex;//(inherit if not defined) //show the directory listing if true else it won't
 		std::unordered_map<int,std::string>				error_pages; //(inherit if not defined)custom error pages for the location. When not defined will inherit from server
 		std::pair<bool, size_t>							client_max_body_size; // (inherit if not defined)if request body is bigger, it will return error code 413 Request Entity Too Large. Current in bytes. 0 means disabled
@@ -26,6 +26,7 @@ class Location{
 		~Location(void);
 
 		//setters
+		void								set_index(std::string const & index_page);
 		void								add_error_page(int error_code, std::string const & error_page);
 		void								add_allowed_http_command(std::string const & http_command);
 		void								set_auto_index(bool autoindex_setting);
