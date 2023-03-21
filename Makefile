@@ -7,7 +7,7 @@ TARGET ?= webserv
 BUILD_DIR ?= ./build
 SRC_DIRS ?= ./src
 INC_DIRS ?= ./include ./lib/njson/include
-CPPFLAGS ?= -Wall -Wextra -g -std=c++11
+CPPFLAGS ?= -Wall -Wextra -std=c++11
 LDFLAGS ?=
 
 # -------------------        LIB        -------------------
