@@ -62,6 +62,7 @@ static std::vector<struct pollfd> get_descriptors(pollable_map_t& fd_map)
 
 static void webserv_parsing(
 	std::string const& config_path,
+	std::vector<std::unique_ptr<Server>>& servers_out,
 	std::vector<std::unique_ptr<Socket>>& sockets_out,
 	pollable_map_t& fd_map_out)
 {
@@ -73,11 +74,11 @@ static void webserv_parsing(
 	if (root_node->is<std::nullptr_t>())
 		throw (std::runtime_error("Invalid configuration file."));
 
-	std::vector<std::unique_ptr<Server>> servers = parse_servers(root_node);
-	if (servers.empty())
+	servers_out = parse_servers(root_node);
+	if (servers_out.empty())
 		throw (std::runtime_error("No proper server configuration provided"));
 
-	sockets_out = build_sockets(servers);
+	sockets_out = build_sockets(servers_out);
 	fd_map_out = build_map(sockets_out);
 }
 
@@ -152,9 +153,10 @@ int main(int argc, char **argv)
 
 	try
 	{
+		std::vector<std::unique_ptr<Server>> servers;
 		std::vector<std::unique_ptr<Socket>> sockets;
 		pollable_map_t fd_map;
-		webserv_parsing(config_path, sockets, fd_map);
+		webserv_parsing(config_path, servers, sockets, fd_map);
 
 		while (s_run)
 			webserv_poll(fd_map);
