@@ -5,7 +5,7 @@ print("content-type: text/html\n\n")
 
 message = "You have succesfully slept for 10 seconds!"
 
-time.sleep(10);
+time.sleep(60);
 
 replyhtml = """
 <html>

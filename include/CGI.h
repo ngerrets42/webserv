@@ -50,6 +50,8 @@ namespace webserv {
 			int out[2];
 		} pipes;
 
+		bool open_in, open_out;
+
 		public:
 		bool destroy;
 		std::vector<char> buffer_in; // Into the CGI

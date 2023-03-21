@@ -2,11 +2,11 @@
 # define CONNECTION_H
 
 # include "Core.h"
+# include "CGI.h"
 # include "Pollable.h"
 # include "Request.h"
 # include "Response.h"
 # include "Server.h"
-# include "CGI.h"
 
 namespace webserv {
 

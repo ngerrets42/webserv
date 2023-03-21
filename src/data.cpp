@@ -46,15 +46,22 @@ namespace data
 	bool send_file(sockfd_t fd, std::ifstream& istream, size_t buffer_size)
 	{
 		if (!istream || istream.eof())
+		{
+			std::cout << "No more file!" << std::endl;
 			return (false); // No more file left to conquer
+		}
 
 		std::vector<char> buffer(buffer_size);
-		istream.read( reinterpret_cast<char*>(buffer.data()) , buffer.size());
+		if (!istream.read( reinterpret_cast<char*>(buffer.data()) , buffer.size()))
+		{
+			std::cerr << "Failed to read from file! (" << istream.tellg() << ')' << std::endl;
+			// return false;
+		}
 
 		if (istream.gcount() <= 0)
 		{
 			std::cerr << "istream.read() gcount = " << istream.gcount() << std::endl;
-			return (false);
+			return (true);
 		}
 		buffer.resize(istream.gcount());
 		ssize_t send_size = send(fd, buffer);
@@ -62,28 +69,21 @@ namespace data
 		{
 			std::cerr << "send_size != buffer.size()" << std::endl;
 			if (send_size < 0)
-				return (false);
-
-			std::cout << "send_file {\n" 
-			<< "buffer.size(): " << buffer.size() << '\n'
-			<< "send_size: " << send_size << '\n'
-			<< "istream pos before: " << istream.tellg() << '\n';
-		
+				return (false);		
 			istream.seekg(istream.tellg() - static_cast<std::ifstream::pos_type>(buffer.size() - send_size));
-
-			std::cout << "istream pos after: " << istream.tellg() << std::endl;
-
 		}
+		std::cout << "Send " << send_size << " bytes." << std::endl;
 		return (!istream.eof());
 	}
 
 	size_t get_file_size(std::string const& fpath)
 	{
 		std::ifstream getl(fpath, std::ifstream::ate | std::ifstream::binary);
-		if (!getl)
-			return (0);
 		size_t file_length = getl.tellg();
+		// TODO: remove
+		std::cerr << "File (" << fpath << ") Length: " << file_length << std::endl;
 		getl.close();
+		getl.clear();
 		return (file_length);
 	}
 

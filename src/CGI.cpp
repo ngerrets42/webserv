@@ -63,6 +63,9 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 	pipe(pipes.in);
 	pipe(pipes.out);
 
+	open_in = true;
+	open_out = true;
+
 	pid = fork();
 	if(pid < 0)
 		// Fork unavailable THROW, needs to be caught
@@ -125,8 +128,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 CGI::~CGI()
 {
 	std::cerr << "deleting CGI (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
-	close(pipes.in[1]);
-	close(pipes.out[0]);
+	close_pipes();
 }
 
 sockfd_t CGI::get_fd(void) const
@@ -170,7 +172,13 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 	if (read_size < 0)
 		buffer_out.clear();
 	else if (read_size == 0)
-		close(pipes.out[0]);
+	{
+		if (open_out)
+		{
+			close(pipes.out[0]);
+			open_out = false;
+		}
+	}
 	else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
 		buffer_out.resize(read_size);
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
@@ -184,7 +192,13 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size == 0)
-		close(pipes.in[1]);
+	{
+		if (open_in)
+		{
+			close(pipes.in[1]);
+			open_in = false;
+		}
+	}
 	else if (write_size < 0)
 		return ;
 	// if (write_size != static_cast<ssize_t>(buffer_in.size()))
@@ -196,16 +210,24 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 
 void CGI::close_in(void)
 {
-	if (pipes.in[1] != -1)
-		close(pipes.in[1]);
+	if (!open_in)
+		return;
+	close(pipes.in[1]);
+	open_in = false;
 }
 
 void CGI::close_pipes(void)
 {
-	if (pipes.in[1] != -1)
+	if (open_in)
+	{
 		close(pipes.in[1]);
-	if (pipes.out[0] != -1)
+		open_in = false;
+	}
+	if (open_out)
+	{
 		close(pipes.out[0]);
+		open_out = false;
+	}
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
@@ -213,11 +235,18 @@ void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 	std::cout << "CGI::on_pollhup (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 	// destroy = true;
 	fd_map.erase(fd);
-	close(fd);
 	if (fd == pipes.in[1])
-		pipes.in[1] = -1;
+	{
+		if (open_in)
+			close(fd);
+		open_in = false;
+	}
 	if (fd == pipes.out[0])
-		pipes.out[0] = -1;
+	{
+		if (open_out)
+			close(fd);
+		open_out = false;
+	}
 }
 
 bool CGI::should_destroy(void) const

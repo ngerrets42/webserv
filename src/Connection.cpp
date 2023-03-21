@@ -12,6 +12,7 @@
 #include <cstring>
 #include <ctime>
 #include <exception>
+#include <ios>
 #include <sstream>
 #include <sys/_types/_size_t.h>
 #include <sys/_types/_ssize_t.h>
@@ -118,7 +119,7 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	// std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
+	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
@@ -172,6 +173,7 @@ short Connection::get_events(sockfd_t fd) const
 
 void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
+	std::cout << '(' << socket_fd << "): " << "New CGI request" << std::endl;
 	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
 	// Build cgi-environment
 
@@ -303,7 +305,7 @@ void Connection::new_request(pollable_map_t& fd_map)
 		auto cgi_pair = server.get_cgi(loc, handler_data.current_request.path);
 		if (!cgi_pair.first.empty())
 		{
-			std::string cgi = server.get_root(loc) + "/" + cgi_pair.first;
+			std::string cgi = server.get_root(loc) + cgi_pair.first;
 			if (data::get_file_size(cgi) == 0)
 			{
 				handler_data.current_response.set_status_code("404");
@@ -425,7 +427,7 @@ void Connection::new_response(void)
 	{
 		if (!handler_data.cgi->buffer_in.empty())
 			return ;
-		close(handler_data.cgi->get_in_fd());
+		handler_data.cgi->close_in();
 	}
 
 	// Get the Server from host
@@ -480,9 +482,7 @@ void Connection::new_response(void)
 			<< "ERROR " << handler_data.current_response.status_code << std::endl;
 
 		handler_data.current_request.fields["connection"] = "close";
-		std::cerr << "GETTING ERROR PATH" << std::endl;
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
-		std::cerr << "ERROR PATH: " << error_path << std::endl;
 
 		handler_data.current_response.content_length = "0";
 		if (!error_path.empty())
@@ -575,11 +575,12 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 			data::get_file_size(fpath));
 
 		// Open file, no file = 404
-		handler_data.file.open(fpath);
+		handler_data.file.open(fpath, std::ios_base::binary);
 		if (!handler_data.file)
 		{
+			std::cout << '(' << socket_fd << "): " << "ERROR 404" << std::endl;
 			handler_data.current_response.set_status_code("404");
-			handler_data.current_response.content_length.clear();
+			return ;
 		}
 		// determine content type based on extention
 		handler_data.current_response.content_type = content_type_from_ext(fpath);
@@ -682,8 +683,12 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		handler_data.custom_page.clear();
 		return ;
 	}
-	if (handler_data.file.bad())
+	if (!handler_data.file)
+	{
+		if (handler_data.cgi == nullptr)
+			state = CLOSE;
 		return ;
+	}
 
 	if (!data::send_file(socket_fd, handler_data.file, MAX_SEND_BUFFER_SIZE))
 	{
@@ -692,7 +697,6 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		state = CLOSE; // Close is default unless keep-alive
 		if (handler_data.current_request.fields["connection"] == "keep-alive")
 			state = READY_TO_READ;
-		return ;
 	}
 	reset_time_remaining();
 }
