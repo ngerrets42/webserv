@@ -130,7 +130,10 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 CGI::~CGI()
 {
 	std::cerr << "deleting CGI (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
-	close_pipes();
+	if (open_in)
+		close(pipes.in[1]);
+	if (open_out)
+		close(pipes.out[0]);
 }
 
 sockfd_t CGI::get_fd(void) const
@@ -145,20 +148,24 @@ int CGI::get_pid(void) const
 
 int CGI::get_in_fd(void) const
 {
-	return (pipes.in[1]);
+	if (open_in)
+		return (pipes.in[1]);
+	return (-1);
 }
 
 int CGI::get_out_fd(void) const
 {
-	return (pipes.out[0]);
+	if (open_out)
+		return (pipes.out[0]);
+	return (-1);
 }
 
 short CGI::get_events(sockfd_t fd) const
 {
-	short events = 0;
-	if (fd == pipes.out[0] && buffer_out.empty())
+	short events = POLLHUP;
+	if (fd == pipes.out[0] && open_out && buffer_out.empty())
 		events |= POLLIN;
-	else if (fd == pipes.in[1] && !buffer_in.empty())
+	else if (fd == pipes.in[1] && open_in && !buffer_in.empty())
 		events |= POLLOUT;
 	return (events);
 }
@@ -174,13 +181,7 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 	if (read_size < 0)
 		buffer_out.clear();
 	else if (read_size == 0)
-	{
-		if (open_out)
-		{
-			close(pipes.out[0]);
-			open_out = false;
-		}
-	}
+		close_out(fd_map);
 	else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
 		buffer_out.resize(read_size);
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
@@ -194,13 +195,7 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
 	if (write_size == 0)
-	{
-		if (open_in)
-		{
-			close(pipes.in[1]);
-			open_in = false;
-		}
-	}
+		close_in(fd_map);
 	else if (write_size < 0)
 		return ;
 	// if (write_size != static_cast<ssize_t>(buffer_in.size()))
@@ -210,50 +205,40 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
 }
 
-void CGI::close_in(void)
+void CGI::close_in(pollable_map_t& fd_map)
 {
 	if (!open_in)
 		return;
+	std::cout << "CGI::close_in (" << pipes.in[1] << ", " << pipes.out[0] << ") closing IN" << std::endl;
+	fd_map.erase(pipes.in[1]);
 	close(pipes.in[1]);
 	open_in = false;
 }
 
-void CGI::close_pipes(void)
+void CGI::close_out(pollable_map_t& fd_map)
 {
-	if (open_in)
-	{
-		close(pipes.in[1]);
-		open_in = false;
-	}
-	if (open_out)
-	{
-		close(pipes.out[0]);
-		open_out = false;
-	}
+	if (!open_out)
+		return;
+	std::cout << "CGI::close_out (" << pipes.in[1] << ", " << pipes.out[0] << ") closing OUT" << std::endl;
+	fd_map.erase(pipes.out[0]);
+	close(pipes.out[0]);
+	open_out = false;
+}
+
+void CGI::close_pipes(pollable_map_t& fd_map)
+{
+	close_in(fd_map);
+	close_out(fd_map);
 }
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
 	std::cout << "CGI::on_pollhup (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
 
-	// TODO: erase?
 	if (fd == pipes.in[1])
-	{
-		if (open_in)
-			close(fd);
-		if (erase_in)
-			fd_map.erase(erase_in);
-		open_in = false;
-	}
+		close_in(fd_map);
 	if (fd == pipes.out[0])
-	{
-		if (open_out)
-			close(fd);
-		if (erase_out)
-			fd_map.erase(erase_out);
-		open_out = false;
-	}
-
+		close_out(fd_map);
 }
 
 bool CGI::should_destroy(void) const

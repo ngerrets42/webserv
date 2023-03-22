@@ -62,15 +62,13 @@ void Connection::reset_time_remaining(void)
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
-	if (handler_data.cgi != nullptr)
+	if (handler_data.cgi != nullptr && handler_data.cgi->get_out_fd() == -1 && handler_data.cgi->buffer_out.empty())
 	{
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
 		{
-			handler_data.cgi->close_pipes();
-			fd_map.erase(handler_data.cgi->get_in_fd());
-			fd_map.erase(handler_data.cgi->get_out_fd());
+			handler_data.cgi->close_pipes(fd_map);
 			delete handler_data.cgi;
 			handler_data.cgi = nullptr;
 			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
@@ -90,27 +88,21 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 
 void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
+	// std::cout << "Connection::on_pollhup" << std::endl;
 	(void)fd_map;
 	(void)fd;
-	// Connection interrupted, remove self from fd_map
-	// std::cout << "Connection::on_pollhup" << std::endl;
-
 	if (handler_data.cgi != nullptr)
 	{
-		// if (handler_data.cgi->get_in_fd() != -1)
-		// 	std::cout << '(' << socket_fd << "): " << "Waiting for CGI to finish..." << std::endl;
-		handler_data.cgi->close_pipes();
+		handler_data.cgi->close_pipes(fd_map);
 		// Kill with SIGTERM because otherwise some CGI's will take too long (or get stuck on cgi.FieldStorage())
 		kill(handler_data.cgi->get_pid(), SIGTERM);
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
 		{
-			fd_map.erase(handler_data.cgi->get_in_fd());
-			fd_map.erase(handler_data.cgi->get_out_fd());
 			delete handler_data.cgi;
 			handler_data.cgi = nullptr;
-			std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+			std::cout << '(' << socket_fd << "): " << "CGI forced exit, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 		}
 	}
 	// Set self to close, so the connection can be closed by an external observer
@@ -119,19 +111,19 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin";
+	// std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin";
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
-		case READY_TO_READ: new_request(fd_map); std::cout << " READY_TO_READ" << std::endl; break;
-		case READING: continue_request(); std::cout << " READING" << std::endl; break;
+		case READY_TO_READ: new_request(fd_map); break;
+		case READING: continue_request(); break;
 		default: return;
 	}
 }
 
 void Connection::on_pollout(pollable_map_t& fd_map)
 {
-	// std::cout << "Connection::on_pollout"  << std::endl;
+	// std::cout << "Connection::on_pollout" << std::endl;
 	// Send response OR continue sending response
 	switch (state)
 	{
@@ -139,12 +131,6 @@ void Connection::on_pollout(pollable_map_t& fd_map)
 		case WRITING: continue_response(fd_map); break;
 		default: return;
 	}
-
-	// if (state == CLOSE)
-	// {
-	// 	fd_map.erase(get_fd());
-	// 	delete this;
-	// }
 }
 
 short Connection::get_events(sockfd_t fd) const
@@ -174,7 +160,6 @@ short Connection::get_events(sockfd_t fd) const
 void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	std::cout << '(' << socket_fd << "): " << "New CGI request" << std::endl;
-	// cgi::env_set_value(env, "SCRIPT_FILENAME", "cgi-bin/handle_form.php");
 	// Build cgi-environment
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
@@ -186,33 +171,25 @@ void Connection::new_request_cgi(pollable_map_t& fd_map)
 	auto it = handler_data.current_request.fields.find("content-length");
 	if (it != handler_data.current_request.fields.end())
 		env::set_value(env, "CONTENT_LENGTH", it->second);
-	
-	if (handler_data.current_request.type == POST)
-		env::set_value(env, "REQUEST_METHOD", "POST");
-	else
-		env::set_value(env, "REQUEST_METHOD", "GET");
-	
+
 	if (handler_data.current_request.fields.find("content-type") != handler_data.current_request.fields.end())
 		env::set_value(env, "CONTENT_TYPE", handler_data.current_request.fields["content-type"]);
 	
-	env::set_value(env, "UPLOAD_DIRECTORY", serv.get_upload_dir(loc));
-	env::set_value(env, "REMOTE_ADDR", get_ip());
-	env::set_value(env, "REMOTE_HOST", get_ip());
 	env::set_value(env, "GATEWAY_INTERFACE", "CGI/1.1");
-
-	static int count = 0;
-	env::set_value(env, "REMOTE_USER", std::to_string(count)); // UNUSED
-	++count;
-
-	// env::set_value(env, "REMOTE_IDENT", "TeamWebserv"); // UNUSED
-
 	env::set_value(env, "SERVER_NAME", "webserv");
 	env::set_value(env, "SERVER_PROTOCOL", "HTTP/1.1");
 	env::set_value(env, "SERVER_SOFTWARE", "webserv");
+	env::set_value(env, "REQUEST_METHOD", get_request_string(handler_data.current_request.type));
+	env::set_value(env, "UPLOAD_DIRECTORY", serv.get_upload_dir(loc));
+	env::set_value(env, "REMOTE_ADDR", get_ip());
+	env::set_value(env, "REMOTE_HOST", get_ip());
 	env::set_value(env, "SCRIPT_NAME", cgi_pair.first);
 	env::set_value(env, "PATH_INFO", cgi_pair.second);
 	env::set_value(env, "PATH_TRANSLATED",  serv.get_root(loc) + cgi_pair.second);
 	env::set_value(env, "QUERY_STRING", handler_data.current_request.path_arguments);
+
+	// env::set_value(env, "REMOTE_USER", "TeamWebserv"); // UNUSED
+	// env::set_value(env, "REMOTE_IDENT", "TeamWebserv"); // UNUSED
 
 	// No content length means no body to send to the CGI
 	if (handler_data.current_request.fields.find("content-length") == handler_data.current_request.fields.end())
@@ -351,29 +328,19 @@ void Connection::continue_request(void)
 	}
 
 	// Receive data from connection
-	int wstatus;
-	int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-	if (rpid > 0)
-	{
-		std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+	// int wstatus;
+	// int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
+	// if (rpid > 0)
+	// {
+	// 	std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 
-		std::cout << "total data received: " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
-		state = READY_TO_WRITE;
-		return ;
-	}
+	// 	std::cout << "total data received: " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
+	// 	state = READY_TO_WRITE;
+	// 	return ;
+	// }
 
 	if (!handler_data.cgi->buffer_in.empty())
-	{
-		// std::cout << "buffer_in not empty" << std::endl;
-		// cgi_counter++;
-		// if (cgi_counter > 10000)
-		// {
-		// 	handler_data.cgi->close_pipes();
-		// 	std::cout << "CGI pipes closed" << std::endl;
-		// }
 		return ;
-	}
-
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
 		std::cerr << "SETTING STATE TO CLOSE" << std::endl;
@@ -395,6 +362,7 @@ void Connection::continue_request(void)
 
 static std::string content_type_from_ext(std::string const& path)
 {
+	// TODO: add content types
 	static std::string const default_type("text/plain");
 	static std::unordered_map<std::string, std::string> const ext_type_map {
 		{"html", "text/html"},
@@ -427,7 +395,7 @@ void Connection::new_response(void)
 	{
 		if (!handler_data.cgi->buffer_in.empty())
 			return ;
-		handler_data.cgi->close_in();
+		// handler_data.cgi->close_in();
 	}
 
 	// Get the Server from host
@@ -450,25 +418,10 @@ void Connection::new_response(void)
 		}
 	}
 
-	// if (handler_data.cgi != nullptr && handler_data.cgi->destroy)
-	// {
-	// 	std::cout << "deleting cgi" << std::endl;
-	// 	delete handler_data.cgi;
-	// 	state = CLOSE;
-	// 	// return ;
-	// }
-
 	if (handler_data.cgi != nullptr && handler_data.cgi->buffer_out.empty())
 	{
-		if (handler_data.cgi->get_out_fd() == -1)
-		{
-			handler_data.current_response.set_status_code("500");
-		}
-		else
-		{
-			state = READY_TO_WRITE;
-			return ;
-		}
+		state = READY_TO_WRITE;
+		return ;
 	}
 
 	reset_time_remaining();
@@ -479,29 +432,21 @@ void Connection::new_response(void)
 		&& handler_data.current_response.status_code.front() != '3') // Codes starting with 3 are redirects
 	{
 		std::cout << '(' << socket_fd << "): "
-			<< "ERROR " << handler_data.current_response.status_code << std::endl;
+			<< "STATUS " << handler_data.current_response.status_code << std::endl;
 
-		handler_data.current_request.fields["connection"] = "close";
+		// handler_data.current_request.fields["connection"] = "close";
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
 
 		handler_data.current_response.content_length = "0";
 		if (!error_path.empty())
 		{
-			std::string fpath = server.get_root(loc) + '/' + error_path;
-			handler_data.current_response.content_length = std::to_string(
-			data::get_file_size(fpath));
+			std::string fpath = server.get_root(loc) + error_path;
+			handler_data.current_response.content_type = content_type_from_ext(fpath);
+			handler_data.current_response.content_length = std::to_string(data::get_file_size(fpath));
 
 			handler_data.file.open(fpath, std::ios_base::binary);
-			if (!handler_data.file)
-			{
-				std::cerr << " open failed; " << std::endl;
-				handler_data.custom_page = build_default_error_page(handler_data.current_response);
-				handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
-				handler_data.current_response.content_type = "text/html";
-			}
-			handler_data.current_response.content_type = content_type_from_ext(fpath);
 		}
-		else
+		if (error_path.empty() || !handler_data.file)
 		{
 			handler_data.custom_page = build_default_error_page(handler_data.current_response);
 			handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
@@ -653,24 +598,22 @@ void Connection::continue_response(pollable_map_t& fd_map)
 			}
 			else
 				handler_data.cgi->buffer_out.clear();
+			std::cout << "Connection::continue_response sending " << send_data << "bytes" << std::endl;
 		}
 
-		int wstatus;
-		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-		if (rpid > 0)
-		{
-			handler_data.cgi->close_pipes();
-			fd_map.erase(handler_data.cgi->get_in_fd());
-			fd_map.erase(handler_data.cgi->get_out_fd());
-			delete handler_data.cgi;
-			handler_data.cgi = nullptr;
-			std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
-			state = CLOSE; // Close is default unless keep-alive
-
-			// TODO: Check if this is okay
-			if (handler_data.current_request.fields["connection"] == "keep-alive")
-				state = READY_TO_READ;
-		}
+		// int wstatus;
+		// int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
+		// if (rpid > 0)
+		// {
+		// 	handler_data.cgi->close_pipes(fd_map);
+		// 	delete handler_data.cgi;
+		// 	handler_data.cgi = nullptr;
+		// 	std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+		// 	state = CLOSE; // Close is default unless keep-alive
+		// 	if (handler_data.current_request.fields["connection"] == "keep-alive")
+		// 		state = READY_TO_READ;
+		// }
+		return ;
 	}
 	if (!handler_data.custom_page.empty())
 	{
