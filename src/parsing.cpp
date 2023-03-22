@@ -289,7 +289,8 @@ static bool set_location_variables(std::string const & path, njson::Json::object
 			print_error("index value needs to be a string");
 			return false;
 		} else {
-			loc.index = it->second->get<std::string>();
+			//loc.index = it->second->get<std::string>();
+			loc.set_index(it->second->get<std::string>());
 		}
 	}
 	

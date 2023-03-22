@@ -13,7 +13,10 @@ Location::Location(std::string const & loc_path):path(loc_path){}
 Location::~Location(void){}
 
 //setters
-
+void Location::set_index(std::string const & index_page){
+	index.first = true;
+	index.second = index_page;
+}
 void Location::add_error_page(int error_code, std::string const & error_page){
 	error_pages[error_code] = error_page;
 }
@@ -111,7 +114,6 @@ size_t Server::match_paths(std::string const & input_path, std::string const & l
 }
 
 //setters
-
 void	Server::add_server_name(std::string const & server_name){
 	server_names.push_back(server_name);
 }
@@ -220,10 +222,10 @@ bool	Server::is_auto_index_on(Location const & location) const{
 }
 
 std::string const &	Server::get_index_page(Location const & location) const{
-	if (location.index.empty()){
+	if (location.index.first == false){
 		return index;
 	} else {
-		return location.index;
+		return location.index.second;
 	}
 }
 
