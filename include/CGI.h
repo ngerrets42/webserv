@@ -50,7 +50,7 @@ namespace webserv {
 			int out[2];
 		} pipes;
 
-		bool open_in, open_out;
+		bool open_in, open_out, erase_in, erase_out;
 
 		public:
 		bool destroy;

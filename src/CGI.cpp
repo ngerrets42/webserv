@@ -65,6 +65,8 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 
 	open_in = true;
 	open_out = true;
+	erase_in = false;
+	erase_out = false;
 
 	pid = fork();
 	if(pid < 0)
@@ -233,20 +235,25 @@ void CGI::close_pipes(void)
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
 	std::cout << "CGI::on_pollhup (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
-	// destroy = true;
-	fd_map.erase(fd);
+
+	// TODO: erase?
 	if (fd == pipes.in[1])
 	{
 		if (open_in)
 			close(fd);
+		if (erase_in)
+			fd_map.erase(erase_in);
 		open_in = false;
 	}
 	if (fd == pipes.out[0])
 	{
 		if (open_out)
 			close(fd);
+		if (erase_out)
+			fd_map.erase(erase_out);
 		open_out = false;
 	}
+
 }
 
 bool CGI::should_destroy(void) const

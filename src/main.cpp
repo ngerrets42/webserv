@@ -131,7 +131,9 @@ static void webserv_poll(pollable_map_t& fd_map)
 			// Notify the connection/socket/cgi that a new event needs to be handled
 			fd_map.at(pfd.fd)->notify(pfd.revents, fd_map, pfd.fd);
 		}
-		else fd_map.at(pfd.fd)->on_post_poll(fd_map);
+		if (fd_map.find(pfd.fd) == fd_map.end())
+			continue ;
+		fd_map.at(pfd.fd)->on_post_poll(fd_map);
 	}
 }
 

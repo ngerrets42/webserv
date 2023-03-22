@@ -119,12 +119,12 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin"  << std::endl;
+	std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin";
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
-		case READY_TO_READ: new_request(fd_map); break;
-		case READING: continue_request(); break;
+		case READY_TO_READ: new_request(fd_map); std::cout << " READY_TO_READ" << std::endl; break;
+		case READING: continue_request(); std::cout << " READING" << std::endl; break;
 		default: return;
 	}
 }
