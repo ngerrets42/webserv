@@ -26,12 +26,27 @@
 					"CGI": [".py", ".cgi"],
 					"upload_directory": "../../upload/files/"
 				},
-				"/upload/": {
-					"redirect": "http://files.f1r5s17.codam.nl:8080/"
-				},
 				"/files/": {
-					"redirect": "http://files.f1r5s17.codam.nl:8080/"
+					"root" :"var/www/upload",
+					"index" : "",
+					"auto_index": true
+				},
+				"/redirect/":{
+					"redirect": "https://www.google.com"
+				},
+				"/not_allowed/":{
+					"allowed_methods":["UNKNOWN"]
+				},
+				"/small_upload/":{
+					"client_body_size":1000,
+					"allowed_methods": ["GET", "POST"],
+					"index": "",
+					"auto_index": true,
+					"CGI": [".py", ".cgi"],
+					"upload_directory": "../../upload/files/"
+
 				}
+
 			}
 		},
 		{
@@ -64,6 +79,13 @@
 			"root": "var/www/html",
 
 			"allowed_methods": ["GET"]
+		},
+		{
+			"listen": 8080,
+			"host": "0.0.0.0",
+			"server_names":["nonlocalhost.com"],
+			"index": "index_nonlocalhost.html",
+			"root" : "var/www/html"
 		}
 	]
 }
