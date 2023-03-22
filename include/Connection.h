@@ -11,7 +11,7 @@
 namespace webserv {
 
 #define HTTP_HEADER_BUFFER_SIZE 8192
-#define CONNECTION_LIFETIME 10
+#define CONNECTION_LIFETIME 60
 
 class Socket;
 

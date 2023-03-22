@@ -62,7 +62,8 @@ void Connection::reset_time_remaining(void)
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
-	if (handler_data.cgi != nullptr && handler_data.cgi->get_out_fd() == -1 && handler_data.cgi->buffer_out.empty())
+	if (handler_data.cgi != nullptr 
+		&& ((handler_data.cgi->get_out_fd() == -1 && handler_data.cgi->buffer_out.empty()) || state == CLOSE))
 	{
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
@@ -327,18 +328,6 @@ void Connection::continue_request(void)
 		return ;
 	}
 
-	// Receive data from connection
-	// int wstatus;
-	// int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-	// if (rpid > 0)
-	// {
-	// 	std::cout << '(' << socket_fd << "): " << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
-
-	// 	std::cout << "total data received: " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
-	// 	state = READY_TO_WRITE;
-	// 	return ;
-	// }
-
 	if (!handler_data.cgi->buffer_in.empty())
 		return ;
 
@@ -348,8 +337,6 @@ void Connection::continue_request(void)
 	});
 
 	handler_data.received_size += handler_data.cgi->buffer_in.size();
-	// std::cout << '(' << socket_fd << "): "
-	// 	<< "receiving data " << handler_data.received_size << '/' << handler_data.content_size << std::endl;
 
 	if (state == CLOSE)
 		return ;
@@ -391,12 +378,8 @@ void Connection::new_response(void)
 {
 	state = WRITING;
 
-	if (handler_data.cgi != nullptr)
-	{
-		if (!handler_data.cgi->buffer_in.empty())
-			return ;
-		// handler_data.cgi->close_in();
-	}
+	// if (handler_data.cgi != nullptr && !handler_data.cgi->buffer_in.empty())
+	// 	return ;
 
 	// Get the Server from host
 	Socket& socket = *parent;
@@ -466,9 +449,6 @@ void Connection::new_response(void)
 
 	if (!handler_data.current_response.content_length.empty())
 		handler_data.current_response.add_http_header("content-length", handler_data.current_response.content_length);
-
-	// if (handler_data.current_response.content_length.empty() && handler_data.current_request.fields["connection"] == "keep-alive")
-	// 	handler_data.current_request.fields["connection"] = "close";
 
 	if (handler_data.current_request.fields["connection"] == "keep-alive")
 		handler_data.current_response.add_http_header("connection", "keep-alive");
@@ -601,18 +581,7 @@ void Connection::continue_response(pollable_map_t& fd_map)
 			std::cout << "Connection::continue_response sending " << send_data << "bytes" << std::endl;
 		}
 
-		// int wstatus;
-		// int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
-		// if (rpid > 0)
-		// {
-		// 	handler_data.cgi->close_pipes(fd_map);
-		// 	delete handler_data.cgi;
-		// 	handler_data.cgi = nullptr;
-		// 	std::cout << "CGI finished execution, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
-		// 	state = CLOSE; // Close is default unless keep-alive
-		// 	if (handler_data.current_request.fields["connection"] == "keep-alive")
-		// 		state = READY_TO_READ;
-		// }
+		// TODO: should this be a conditional return?
 		return ;
 	}
 	if (!handler_data.custom_page.empty())
