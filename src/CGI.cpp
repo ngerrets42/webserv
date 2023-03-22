@@ -112,6 +112,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 			std::string status = "status: 500 Internal Server Error\r\n";
 			std::cout << status << std::endl;
 			std::cerr << "CGI::CGI() execve error" << std::endl;
+			std::perror("something went wrong");
 			for (auto* p : exec_argv)
 				free(p);
 			exit(1);
