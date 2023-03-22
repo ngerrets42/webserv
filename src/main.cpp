@@ -1,4 +1,3 @@
-#include "Connection.h"
 #include "Core.h"
 #include "Server.h"
 #include "Socket.h"
@@ -6,14 +5,14 @@
 #include <csignal>
 #include <cstddef>
 #include <cstdlib>
+#include <ctime>
 #include <exception>
 #include <memory>
 #include <stdexcept>
 #include <sys/signal.h>
-#include <ctime>
 #include <unordered_map>
 
-#define TIMEOUT 1000
+# define TIMEOUT 1000
 
 using namespace webserv;
 
@@ -27,6 +26,7 @@ static pollable_map_t build_map(std::vector<std::unique_ptr<Socket>>& sockets)
 	return (fd_map);
 }
 
+// This functions builds a pollfd descriptor vector from the fd_map
 static std::vector<struct pollfd> get_descriptors(pollable_map_t& fd_map)
 {
 	std::vector<struct pollfd> fds;
@@ -115,9 +115,12 @@ static void webserv_poll(pollable_map_t& fd_map)
 {
 	std::vector<struct pollfd> fds = get_descriptors(fd_map);
 
-	size_t amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
+	int amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
 	if (amount < 0)
+	{
 		std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
+		return ;
+	}
 
 	for (struct pollfd& pfd : fds)
 	{
@@ -143,7 +146,7 @@ int main(int argc, char **argv)
 	// TODO: change
 	(void)std::signal(SIGPIPE, [](int i) { (void)i; std::cerr << "SIGPIPE" << std::endl; exit(1); });
 
-	// SIGINT needs to close the program cleanly
+	// Overwriting SIGINT behaviour to close the program cleanly
 	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });
 
 	// configure where to look for config
@@ -174,6 +177,5 @@ int main(int argc, char **argv)
 	}
 
 	std::cout << "Bye!" << std::endl;
-
 	return (EXIT_SUCCESS);
 }

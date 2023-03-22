@@ -1,8 +1,8 @@
 #include "Connection.h"
+#include "CGI.h"
 #include "Core.h"
 #include "Request.h"
 #include "Socket.h"
-#include "CGI.h"
 #include "data.h"
 #include "html.h"
 

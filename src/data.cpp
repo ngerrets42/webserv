@@ -52,16 +52,16 @@ namespace data
 		}
 
 		std::vector<char> buffer(buffer_size);
-		if (!istream.read( reinterpret_cast<char*>(buffer.data()) , buffer.size()))
-		{
-			std::cerr << "Failed to read from file! (" << istream.tellg() << ')' << std::endl;
-			// return false;
-		}
+		istream.read( reinterpret_cast<char*>(buffer.data()) , buffer.size());
+		// {
+		// 	std::cerr << "Failed to read from file! (" << istream.tellg() << ')' << std::endl;
+		// 	// return false;
+		// }
 
 		if (istream.gcount() <= 0)
 		{
 			std::cerr << "istream.read() gcount = " << istream.gcount() << std::endl;
-			return (true);
+			return (false);
 		}
 		buffer.resize(istream.gcount());
 		ssize_t send_size = send(fd, buffer);
@@ -69,22 +69,20 @@ namespace data
 		{
 			std::cerr << "send_size != buffer.size()" << std::endl;
 			if (send_size < 0)
-				return (false);		
+				return (false);
 			istream.seekg(istream.tellg() - static_cast<std::ifstream::pos_type>(buffer.size() - send_size));
 		}
-		std::cout << "Send " << send_size << " bytes." << std::endl;
+		// std::cout << "Send " << send_size << " bytes." << std::endl;
 		return (!istream.eof());
 	}
 
 	size_t get_file_size(std::string const& fpath)
 	{
 		std::ifstream getl(fpath, std::ifstream::ate | std::ifstream::binary);
-		size_t file_length = getl.tellg();
-		// TODO: remove
-		std::cerr << "File (" << fpath << ") Length: " << file_length << std::endl;
+		std::ifstream::pos_type pos = getl.tellg();
 		getl.close();
 		getl.clear();
-		return (file_length);
+		return (pos);
 	}
 
 } // namespace data
