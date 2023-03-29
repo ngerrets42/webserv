@@ -570,6 +570,13 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 	(void)server;
 	(void)loc;
 	std::cout << "Connection::new_response_delete" << std::endl;
+	
+	if (!handler_data.current_response.status_code.empty())
+		return;
+	handler_data.custom_page = "<html><body>File has been deleted</body></html>\n\n";
+	handler_data.current_response.content_length = std::to_string(handler_data.custom_page.size());
+	handler_data.current_response.content_type = "text/html";
+	
 }
 
 void Connection::continue_response(pollable_map_t& fd_map)

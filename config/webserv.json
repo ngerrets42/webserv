@@ -8,7 +8,6 @@
 
 			"error_pages": {
 				"404": "error_pages/404.html",
-				"403": "error_pages/403.html",
 				"405": "error_pages/405.html",
 				"500": "error_pages/500.html"
 			},
@@ -28,6 +27,7 @@
 				},
 				"/files/": {
 					"root" :"var/www/upload",
+					"allowed_methods" : ["GET", "DELETE"],
 					"index" : "",
 					"auto_index": true
 				},
@@ -36,17 +36,7 @@
 				},
 				"/not_allowed/":{
 					"allowed_methods":["UNKNOWN"]
-				},
-				"/small_upload/":{
-					"client_body_size":1000,
-					"allowed_methods": ["GET", "POST"],
-					"index": "",
-					"auto_index": true,
-					"CGI": [".py", ".cgi"],
-					"upload_directory": "../../upload/files/"
-
 				}
-
 			}
 		},
 		{
