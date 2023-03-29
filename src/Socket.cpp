@@ -116,7 +116,7 @@ Server& Socket::get_server(std::string const& host)
 		if (s->contain_server_name(hostname))
 			return (*s);
 	}
-	return (*servers[0]);
+	return (*servers.back()); // Because the first in the JSON is the last in the map
 }
 
 void Socket::add_server_ref(std::unique_ptr<Server>& server_ref)

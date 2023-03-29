@@ -349,10 +349,10 @@ void Connection::continue_request(void)
 
 static std::string content_type_from_ext(std::string const& path)
 {
-	// TODO: add more content types?
 	constexpr char const* DEFAULT_TYPE = "text/plain";
 	static std::unordered_map<std::string, std::string> const ext_type_map {
 		{"html", "text/html"},
+		{"htm", "text/html"},
 		{"gif", "image/gif"},
 		{"css", "text/css"},
 		{"csv", "text/csv"},
@@ -581,6 +581,7 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 
 void Connection::continue_response(pollable_map_t& fd_map)
 {
+	(void)fd_map;
 	if (handler_data.cgi != nullptr)
 	{
 		if (!handler_data.cgi->buffer_out.empty())
