@@ -60,8 +60,11 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 {
 	std::cout << "Lauching new CGI" << std::endl;
 	//setting up the pipes
-	pipe(pipes.in);
-	pipe(pipes.out);
+
+	if(pipe(pipes.in) == -1)
+		throw std::runtime_error(std::string {"CGI::CGI() failed create pipe "} + strerror(errno));
+	if (pipe(pipes.out) == -1)
+		throw std::runtime_error(std::string {"CGI::CGI() failed create pipe "} + strerror(errno));
 
 	open_in = true;
 	open_out = true;
@@ -77,8 +80,25 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 	if(pid == 0) // child process
 	{
 		// Handle pipes
-		dup2(pipes.in[0], STDIN_FILENO); close(pipes.in[0]); close(pipes.in[1]);
-		dup2(pipes.out[1], STDOUT_FILENO); close(pipes.out[1]); close(pipes.out[0]);
+		if (dup2(pipes.in[0], STDIN_FILENO) == -1)
+		{
+			std::cerr << strerror(errno) << std::endl;
+			std::string status = "status: 500 Internal Server Error\r\n";
+			std::cout << status << std::endl;
+			exit(1);
+		}
+		close(pipes.in[0]);
+		close(pipes.in[1]);
+		
+		if (dup2(pipes.out[1], STDOUT_FILENO) == -1)
+		{
+			std::cerr << strerror(errno) << std::endl;
+			std::string status = "status: 500 Internal Server Error\r\n";
+			std::cout << status << std::endl;
+			exit(1);
+		}
+		close(pipes.out[1]);
+		close(pipes.out[0]);
 
 		// Build char** out of array
 		char* env_array[env.size() + 1];
@@ -119,7 +139,10 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 	}
 	if (pid > 0) //parent process
 	{
-		fcntl(pipes.in[1], F_SETFL, O_NONBLOCK);
+		if(fcntl(pipes.in[1], F_SETFL, O_NONBLOCK) == -1){
+			
+		}
+
 		fcntl(pipes.out[0], F_SETFL, O_NONBLOCK);
 
 		close(pipes.in[0]);
