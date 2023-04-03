@@ -1,0 +1,79 @@
+{
+	"servers": [
+		{
+			"listen": 8080,
+			"host": "localhost",
+			"server_names": ["test"],
+			"index": "index_default.html",
+			"allowed_methods": ["GET"],
+
+			"root": "var/www/html"
+		},
+		{
+			"listen": 8080,
+			"host": "localhost",
+			"server_names": ["localhost"],
+			"index": "index.html",
+
+			"error_pages": {
+				"404": "error_pages/404.html",
+				"405": "error_pages/405.html",
+				"500": "error_pages/500.html"
+			},
+
+			"allowed_methods": ["GET"],
+
+			"root": "var/www/html",
+
+			"locations": {
+				"/cgi-bin/": {
+					"client_body_size": 0,
+					"allowed_methods": ["GET", "POST"],
+					"index": "",
+					"auto_index": true,
+					"CGI": [".py", ".cgi"],
+					"upload_directory": "../../upload/files/"
+				},
+				"/files/": {
+					"root" :"var/www/upload",
+					"allowed_methods" : ["GET", "DELETE"],
+					"index" : "",
+					"auto_index": true
+				},
+				"/redirect/":{
+					"redirect": "https://www.google.com"
+				},
+				"/not_allowed/":{
+					"allowed_methods":["GET"]
+				}
+			}
+		},
+		{
+			"listen": 9000,
+			"host": "localhost",
+			"server_names": ["localhost"],
+			"index": "index_dif_port.html",
+			"allowed_methods": ["GET"],
+
+			"root": "var/www/html"
+		},
+		{
+			"listen": 8080,
+			"host": "localhost",
+			"server_names": ["doogle"],
+			"index": "doogle.html",
+			"allowed_methods": ["GET"],
+
+			"root": "var/www/html"
+		},
+		{
+			"listen": 8080,
+			"host": "localhost",
+			"server_names": ["zing"],
+			"index": "zing.html",
+			"allowed_methods": ["GET"],
+
+			"root": "var/www/html"
+		}
+	]
+}

@@ -140,11 +140,12 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 	if (pid > 0) //parent process
 	{
 		if(fcntl(pipes.in[1], F_SETFL, O_NONBLOCK) == -1){
-			
+			throw std::runtime_error(std::string {"CGI failed to set the pipes to Non_block"} + strerror(errno));
 		}
-
-		fcntl(pipes.out[0], F_SETFL, O_NONBLOCK);
-
+		if(fcntl(pipes.out[0], F_SETFL, O_NONBLOCK) == -1){
+			throw std::runtime_error(std::string {"CGI failed to set the pipes to Non_block"} + strerror(errno));
+		}
+	
 		close(pipes.in[0]);
 		close(pipes.out[1]);
 	}

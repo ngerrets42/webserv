@@ -26,7 +26,8 @@ Socket::Socket(uint16_t _port, std::string const& _host) : port(_port), host(_ho
 
 	//set the value of SO_REUSEADDR to true (1);
 	int const optval = 1;
-	setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+	if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
+		throw (std::runtime_error(std::strerror(errno)));
 
 	// Bind settings
 	address.sin_family = AF_INET;
