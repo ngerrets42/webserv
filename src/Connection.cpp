@@ -349,10 +349,17 @@ void Connection::continue_request(void)
 
 static std::string content_type_from_ext(std::string const& path)
 {
-	// TODO: add content types
-	static std::string const default_type("text/plain");
+	constexpr char const* DEFAULT_TYPE = "text/plain";
 	static std::unordered_map<std::string, std::string> const ext_type_map {
 		{"html", "text/html"},
+		{"htm", "text/html"},
+		{"gif", "image/gif"},
+		{"css", "text/css"},
+		{"csv", "text/csv"},
+		{"xml", "text/xml"},
+		{"jpeg", "image/jpeg"},
+		{"png", "image/png"},
+		{"tiff", "image/tiff"},
 		{"ico", "image/x-icon"}
 	};
 
@@ -360,11 +367,11 @@ static std::string content_type_from_ext(std::string const& path)
 	if (pos != std::string::npos)
 	{
 		++pos;
-		if (pos >= path.length()) return (default_type);
+		if (pos >= path.length()) return (DEFAULT_TYPE);
 		auto it = ext_type_map.find(path.substr(pos));
 		if (it != ext_type_map.end()) return (it->second);
 	}
-	return (default_type);
+	return (DEFAULT_TYPE);
 }
 
 std::string build_default_error_page(Response const& response)
@@ -574,7 +581,11 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 
 void Connection::continue_response(pollable_map_t& fd_map)
 {
+<<<<<<< HEAD
 	(void) fd_map;
+=======
+	(void)fd_map;
+>>>>>>> main
 	if (handler_data.cgi != nullptr)
 	{
 		if (!handler_data.cgi->buffer_out.empty())
