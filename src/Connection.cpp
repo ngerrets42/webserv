@@ -581,11 +581,7 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 
 void Connection::continue_response(pollable_map_t& fd_map)
 {
-<<<<<<< HEAD
-	(void) fd_map;
-=======
 	(void)fd_map;
->>>>>>> main
 	if (handler_data.cgi != nullptr)
 	{
 		if (!handler_data.cgi->buffer_out.empty())
