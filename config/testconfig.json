@@ -36,7 +36,7 @@
 				},
 				"/files/": {
 					"root" :"var/www/upload",
-					"allowed_methods" : ["GET", "DELETE"],
+					"allowed_methods" : ["GET"],
 					"index" : "",
 					"auto_index": true
 				},
@@ -44,7 +44,7 @@
 					"redirect": "https://www.google.com"
 				},
 				"/not_allowed/":{
-					"allowed_methods":["GET"]
+					"allowed_methods":["POST"]
 				}
 			}
 		},

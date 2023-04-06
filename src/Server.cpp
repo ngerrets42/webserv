@@ -179,22 +179,51 @@ bool Server::is_http_command_allowed(std::string const & http_command, Location 
 
 std::string	Server::get_error_page(int error_code, Location const & location) const{
 	std::unordered_map<int, std::string>::const_iterator it;
-	if(location.error_pages.empty()){
-		if(error_pages.empty()){
-			return std::string();
-		}
-	} else {
+
+	if(location.error_pages.empty() && error_pages.empty()){
+		return std::string();
+	} else if (!location.error_pages.empty()){
 		it = location.error_pages.find(error_code);
-		if(it != error_pages.end()){
-			return it->second;
+		if (it != location.error_pages.end()){
+			if (!location.root.empty()){
+				return (location.root + "/" + it->second);
+			} else {
+				return (root + "/" + it->second);
+			}
 		}
 	}
+		
+		
+		
+		
+	location.error_pages.empty()){
 	it = error_pages.find(error_code);
-	if(it == error_pages.end()){
+	if (it == error_pages.end()){
 		return std::string();
 	} else {
-		return it->second;
+		return (root + "/" + it->second);
 	}
+	}
+
+
+	// if(location.error_pages.empty()){
+	// 	if(error_pages.empty()){
+	// 		return std::string();
+	// 	} else {
+	// 		it = error_pages.find(error_code);
+	// 	}
+	// } else {
+	// 	it = location.error_pages.find(error_code);
+	// 	if(it != error_pages.end()){
+	// 		return it->second;
+	// 	}
+	// }
+	// it = error_pages.find(error_code);
+	// if(it == error_pages.end()){
+	// 	return std::string();
+	// } else {
+	// 	return it->second;
+	// }
 }
 
 std::string const & Server::get_root(Location const & location) const{
