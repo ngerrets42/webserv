@@ -192,38 +192,14 @@ std::string	Server::get_error_page(int error_code, Location const & location) co
 			}
 		}
 	}
-		
-		
-		
-		
-	location.error_pages.empty()){
+	if (error_pages.empty()){
+		return  std::string();
+	}
 	it = error_pages.find(error_code);
-	if (it == error_pages.end()){
-		return std::string();
-	} else {
+	if (it != error_pages.end()){
 		return (root + "/" + it->second);
 	}
-	}
-
-
-	// if(location.error_pages.empty()){
-	// 	if(error_pages.empty()){
-	// 		return std::string();
-	// 	} else {
-	// 		it = error_pages.find(error_code);
-	// 	}
-	// } else {
-	// 	it = location.error_pages.find(error_code);
-	// 	if(it != error_pages.end()){
-	// 		return it->second;
-	// 	}
-	// }
-	// it = error_pages.find(error_code);
-	// if(it == error_pages.end()){
-	// 	return std::string();
-	// } else {
-	// 	return it->second;
-	// }
+	return std::string();
 }
 
 std::string const & Server::get_root(Location const & location) const{

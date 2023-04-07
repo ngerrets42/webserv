@@ -431,7 +431,7 @@ std::cerr << "getting error page :" + error_path << std::endl;
 		handler_data.current_response.content_length = "0";
 		if (!error_path.empty())
 		{
-			std::string fpath = server.get_root(loc) + '/' + error_path;
+			std::string fpath = error_path;
 std::cerr << "error fpath :" << fpath << std::endl;
 			handler_data.current_response.content_type = content_type_from_ext(fpath);
 			handler_data.current_response.content_length = std::to_string(data::get_file_size(fpath));

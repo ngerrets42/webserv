@@ -60,7 +60,7 @@
 		{
 			"listen": 8080,
 			"host": "localhost",
-			"server_names": ["doogle"],
+			"server_names": ["doogle.com"],
 			"index": "doogle.html",
 			"allowed_methods": ["GET"],
 
@@ -69,7 +69,7 @@
 		{
 			"listen": 8080,
 			"host": "localhost",
-			"server_names": ["zing"],
+			"server_names": ["zing.com"],
 			"index": "zing.html",
 			"allowed_methods": ["GET"],
 
