@@ -14,10 +14,11 @@ files = os.listdir(upload_dir)
 if len(files) == 0:
 	print("<tr><td> Directory is empty</td></tr>")
 for file in files:
-	print("<tr>")
-	print("<td>" + file + "</td>")
-	print("<td> <div id=\"del_button\"><button type=\"button\" onclick=\"loadXMLDoc(\'" + file + "\')\">Delete file</button></div></td>")
-	print("</tr>")
+	if (os.path.isdir(upload_dir + "/" + file) == False):
+		print("<tr>")
+		print("<td>" + file + "</td>")
+		print("<td> <div id=\"del_button\"><button type=\"button\" onclick=\"loadXMLDoc(\'" + file + "\')\">Delete file</button></div></td>")
+		print("</tr>")
 
 print("</table>")
 print("<script>")
