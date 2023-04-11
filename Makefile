@@ -24,6 +24,10 @@ OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CPPFLAGS += $(INC_FLAGS)
 
+ifdef DEBUG
+	CPPFLAGS += -DDEBUG
+endif
+
 .PHONY: all lib
 all: lib $(TARGET)
 
