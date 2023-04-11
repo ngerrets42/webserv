@@ -1,11 +1,9 @@
 #ifndef PARSING_H
 # define PARSING_H
 
-# include "Core.h"
-# include "../lib/njson/include/njson/njson.h"
-
-#include "Server.h"
-#include "Socket.h"
+# include "njson/njson.h"
+# include "Server.h"
+# include "Socket.h"
 
 namespace webserv {
 

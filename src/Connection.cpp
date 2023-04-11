@@ -7,18 +7,6 @@
 #include "html.h"
 
 #include <csignal>
-// #include <cstdio>
-// #include <cstdlib>
-// #include <cstring>
-// #include <ctime>
-// #include <exception>
-// #include <ios>
-// #include <sstream>
-// #include <sys/poll.h>
-// #include <sys/signal.h>
-// #include <sys/wait.h>
-// #include <unistd.h>
-// #include <unordered_map>
 
 namespace webserv {
 
@@ -100,7 +88,6 @@ void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 
 void Connection::on_pollin(pollable_map_t& fd_map)
 {
-	// std::cout <<'(' << socket_fd << "): " <<  "Connection::on_pollin";
 	// Receive request OR continue receiving in case of POST
 	switch (state)
 	{
@@ -112,7 +99,6 @@ void Connection::on_pollin(pollable_map_t& fd_map)
 
 void Connection::on_pollout(pollable_map_t& fd_map)
 {
-	// std::cout << "Connection::on_pollout" << std::endl;
 	// Send response OR continue sending response
 	switch (state)
 	{
@@ -126,30 +112,17 @@ short Connection::get_events(sockfd_t fd) const
 {
 	(void)fd;
 	short events = POLLHUP;
-	// if (handler_data.cgi != nullptr)
-	// {
-	// 	if (!handler_data.cgi->buffer_out.empty())
-	// 		events |= POLLOUT;
-	// } else
 	if (state == READY_TO_WRITE || state == WRITING)
 		events |= POLLOUT;
 	else if (state == READING || state == READY_TO_READ)
-	{
-		// if (handler_data.cgi != nullptr)
-		// {
-		// 	if (handler_data.cgi->buffer_in.empty())
-		// 		events |= POLLIN;
-		// }
-		// else
-			events |= POLLIN;
-	}
+		events |= POLLIN;
 	return (events);
 }
 
+// Build cgi-environment and lauch the cgi
 void Connection::new_request_cgi(pollable_map_t& fd_map)
 {
 	std::cout << '(' << socket_fd << "): " << "New CGI request" << std::endl;
-	// Build cgi-environment
 
 	Server& serv = parent->get_server(handler_data.current_request.fields["host"]);
 	Location loc = serv.get_location(handler_data.current_request.path);
@@ -291,7 +264,7 @@ void Connection::new_request(pollable_map_t& fd_map)
 				if( ::remove(to_remove.c_str()) != 0 )
 				{
 					std::cerr << "Can't delete file: " << strerror(errno) << std::endl;
-					handler_data.current_response.set_status_code("404");
+					handler_data.current_response.set_status_code("404"); // 404 might be the most appropriate response
 				}
 			}
 		}
@@ -311,7 +284,9 @@ void Connection::continue_request(void)
 {
 	if (handler_data.cgi == nullptr)
 	{
+#ifdef DEBUG
 		std::cout << '(' << socket_fd << "): " << "CGI no longer exists." << std::endl;
+#endif
 		state = CLOSE;
 		return ;
 	}
@@ -320,7 +295,6 @@ void Connection::continue_request(void)
 		return ;
 
 	handler_data.cgi->buffer_in = data::receive(socket_fd, HTTP_HEADER_BUFFER_SIZE, [&](){
-		std::cerr << "SETTING STATE TO CLOSE" << std::endl;
 		this->state = CLOSE;
 	});
 
@@ -372,9 +346,6 @@ std::string build_default_error_page(Response const& response)
 void Connection::new_response(void)
 {
 	state = WRITING;
-
-	// if (handler_data.cgi != nullptr && !handler_data.cgi->buffer_in.empty())
-	// 	return ;
 
 	// Get the Server from host
 	Socket& socket = *parent;
@@ -451,6 +422,9 @@ void Connection::new_response(void)
 	if (!handler_data.current_response.content_type.empty())
 		handler_data.current_response.add_http_header("content-type", handler_data.current_response.content_type);
 
+	std::cout << '(' << socket_fd << "): "
+		<< "sending new response (" << handler_data.current_response.status_code << ')' << std::endl;
+
 	// Send the response header
 	data::send(socket_fd, handler_data.current_response.get_response());
 
@@ -458,10 +432,15 @@ void Connection::new_response(void)
 	last_response = handler_data.current_response;
 }
 
+// Builder for get responses
 void Connection::new_response_get(Server const& server, Location const& loc)
 {
 	std::string const& root = server.get_root(loc);
 	std::string fpath = root + handler_data.current_request.path;
+
+#ifdef DEBUG
+	std::cout << "Connection::new_response_get" << std::endl;
+#endif
 
 	// path is a directory
 	if (fpath.back() == '/')
@@ -487,8 +466,6 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	// No custom page (index), so we have to get the file from fpath (or send 404 not found)
 	if (handler_data.custom_page.empty())
 	{
-
-
 		handler_data.current_response.content_length = std::to_string(
 			data::get_file_size(fpath));
 
@@ -498,7 +475,6 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 		{
 			handler_data.file.close();
 			handler_data.file.clear();
-			std::cout << '(' << socket_fd << "): " << "ERROR 404" << std::endl;
 			handler_data.current_response.set_status_code("404");
 			return ;
 		}
@@ -507,13 +483,16 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	}
 }
 
+// Builder for CGI responses
 void Connection::new_response_cgi(Server const& server, Location const& loc)
 {
-	(void)server;
-	(void)loc;
+	(void)server; (void)loc;
 	if (handler_data.cgi->buffer_out.empty())
 		return ;
+
+#ifdef DEBUG
 	std::cout << "Connection::new_response_cgi" << std::endl;
+#endif
 
 	handler_data.current_response.content_type = "text/plain";
 
@@ -542,22 +521,28 @@ void Connection::new_response_cgi(Server const& server, Location const& loc)
 		handler_data.cgi->buffer_out.clear();
 }
 
+// Builder for redirection responses
 void Connection::new_response_redirect(Server const& server, Location const& loc)
 {
 	(void)server;
 	(void)loc;
+#ifdef DEBUG
 	std::cout << "Connection::new_response_redirect" << std::endl;
+#endif
 
 	handler_data.current_response.add_http_header("location", server.get_redirection(loc));
 	handler_data.current_response.set_status_code("301");
 	handler_data.current_response.add_http_header("content-length", "0");
 }
 
+// Builder for delete responses
 void Connection::new_response_delete(Server const& server, Location const& loc)
 {
 	(void)server;
 	(void)loc;
+#ifdef DEBUG
 	std::cout << "Connection::new_response_delete" << std::endl;
+#endif
 	
 	if (!handler_data.current_response.status_code.empty())
 		return;
@@ -567,6 +552,7 @@ void Connection::new_response_delete(Server const& server, Location const& loc)
 	
 }
 
+// For sending files
 void Connection::continue_response(pollable_map_t& fd_map)
 {
 	(void)fd_map;
@@ -575,18 +561,14 @@ void Connection::continue_response(pollable_map_t& fd_map)
 		if (!handler_data.cgi->buffer_out.empty())
 		{
 			ssize_t send_data = data::send(socket_fd, handler_data.cgi->buffer_out);
-			if (send_data != static_cast<ssize_t>(handler_data.cgi->buffer_out.size()))
-			{
-				// std::cerr << "Can't write full buffer to CGI";
-			}
-			else
+			if (send_data == static_cast<ssize_t>(handler_data.cgi->buffer_out.size()))
 				handler_data.cgi->buffer_out.clear();
-			std::cout << "Connection::continue_response sending " << send_data << "bytes" << std::endl;
+			std::cout << '(' << socket_fd << "): "
+				<< "sending " << send_data << " bytes to client" << std::endl;
 		}
-
-		// TODO: should this be a conditional return?
 		return ;
 	}
+
 	if (!handler_data.custom_page.empty())
 	{
 		ssize_t send_data = data::send(socket_fd, handler_data.custom_page);

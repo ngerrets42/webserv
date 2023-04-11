@@ -2,17 +2,9 @@
 #include "Server.h"
 #include "Socket.h"
 #include "parsing.h"
-#include <csignal>
-#include <cstddef>
-#include <cstdlib>
-#include <ctime>
-#include <exception>
-#include <memory>
-#include <stdexcept>
-#include <sys/signal.h>
-#include <unordered_map>
 
-# define TIMEOUT 1000
+#include <csignal>
+#include <unordered_map>
 
 using namespace webserv;
 
@@ -113,14 +105,13 @@ static void webserv_cleanup(std::vector<std::unique_ptr<Socket>>& sockets, polla
 // Do a poll-round on all active descriptors in the map
 static void webserv_poll(pollable_map_t& fd_map)
 {
+	constexpr size_t POLL_TIMEOUT = 1000;
 	std::vector<struct pollfd> fds = get_descriptors(fd_map);
 
-	int amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), TIMEOUT);
+	int amount = poll(fds.data(), static_cast<nfds_t>(fds.size()), POLL_TIMEOUT);
+	// Only really happens on interrupt
 	if (amount < 0)
-	{
-		std::cerr << "poll() < 0: " << std::strerror(errno) << std::endl;
 		return ;
-	}
 
 	for (struct pollfd& pfd : fds)
 	{
@@ -137,16 +128,19 @@ static void webserv_poll(pollable_map_t& fd_map)
 	}
 }
 
+// Static global for better exiting
 static bool s_run = true;
+
 int main(int argc, char **argv)
 {
 	constexpr char const* DEFAULT_CONFIG_PATH {"config/webserv.json"};
 
-	// TODO: Remove
+#ifdef DEBUG
 	(void)std::atexit([]() { system("leaks -q webserv"); });
+#endif
 
-	// TODO: change
-	(void)std::signal(SIGPIPE, [](int i) { (void)i; std::cerr << "SIGPIPE" << std::endl; exit(1); });
+	// In the rare case of sigpipe, we shouldn't exit
+	(void)std::signal(SIGPIPE, [](int i) { (void)i; });
 
 	// Overwriting SIGINT behaviour to close the program cleanly
 	(void)std::signal(SIGINT, [](int i) { (void)i; s_run = false; });

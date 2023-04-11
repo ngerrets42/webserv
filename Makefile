@@ -45,9 +45,11 @@ $(BUILD_DIR)/%.cpp.o: %.cpp $(HDRS)
 .PHONY: clean fclean re
 clean:
 	$(RM) -r $(BUILD_DIR)
+	$(MAKE) -C $(NJSON_DIR) clean
 
 fclean: clean
 	$(RM) $(TARGET)
+	$(MAKE) -C $(NJSON_DIR) fclean
 
 re: fclean all
 

@@ -60,6 +60,7 @@ Socket::Socket(uint16_t _port, std::string const& _host) : port(_port), host(_ho
 
 Socket::~Socket()
 {
+	std::cout << "Socket " << socket_fd << " destroyed." << std::endl;
 	close(socket_fd);
 }
 
@@ -79,7 +80,7 @@ void Socket::on_pollout(pollable_map_t& fd_map) { (void)fd_map; }
 short Socket::get_events(sockfd_t fd) const
 {
 	(void)fd;
-	return (POLLIN);
+	return (POLLIN); // Sockets only really respond to POLLIN as they need to accept connections
 }
 
 uint16_t Socket::get_port(void) const { return port; }

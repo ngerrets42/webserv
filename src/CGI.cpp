@@ -194,11 +194,13 @@ short CGI::get_events(sockfd_t fd) const
 	return (events);
 }
 
+// READ FROM CGI
 void CGI::on_pollin(pollable_map_t& fd_map)
 {
 	(void)fd_map;
-	// READ FROM CGI
+#ifdef DEBUG
 	std::cout << "CGI::on_pollin (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+#endif
 
 	buffer_out.resize(MAX_SEND_BUFFER_SIZE);
 	ssize_t read_size = read(pipes.out[0], buffer_out.data(), MAX_SEND_BUFFER_SIZE);
@@ -211,10 +213,13 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
 }
 
+// WRITE TO CGI
 void CGI::on_pollout(pollable_map_t& fd_map)
 {
 	(void)fd_map;
-	// std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+#ifdef DEBUG
+	std::cout << "CGI::on_pollout (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+#endif
 
 	// Write body buffer to CGI
 	ssize_t write_size = write(pipes.in[1], buffer_in.data(), buffer_in.size());
@@ -222,8 +227,6 @@ void CGI::on_pollout(pollable_map_t& fd_map)
 		close_in(fd_map);
 	else if (write_size < 0)
 		return ;
-	// if (write_size != static_cast<ssize_t>(buffer_in.size()))
-	// 	std::cerr << "Warning: Can't write full buffer to CGI, trying again next iteration" << std::endl;
 
 	if (write_size > 0)
 		buffer_in.erase(buffer_in.begin(), buffer_in.begin() + write_size);
@@ -233,7 +236,9 @@ void CGI::close_in(pollable_map_t& fd_map)
 {
 	if (!open_in)
 		return;
+#ifdef DEBUG
 	std::cout << "CGI::close_in (" << pipes.in[1] << ", " << pipes.out[0] << ") closing IN" << std::endl;
+#endif
 	fd_map.erase(pipes.in[1]);
 	close(pipes.in[1]);
 	open_in = false;
@@ -243,7 +248,9 @@ void CGI::close_out(pollable_map_t& fd_map)
 {
 	if (!open_out)
 		return;
+#ifdef DEBUG
 	std::cout << "CGI::close_out (" << pipes.in[1] << ", " << pipes.out[0] << ") closing OUT" << std::endl;
+#endif
 	fd_map.erase(pipes.out[0]);
 	close(pipes.out[0]);
 	open_out = false;
@@ -257,7 +264,9 @@ void CGI::close_pipes(pollable_map_t& fd_map)
 
 void CGI::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
+#ifdef DEBUG
 	std::cout << "CGI::on_pollhup (" << pipes.in[1] << ", " << pipes.out[0] << ')' << std::endl;
+#endif
 
 	if (fd == pipes.in[1])
 		close_in(fd_map);
