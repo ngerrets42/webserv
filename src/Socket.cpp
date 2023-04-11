@@ -44,8 +44,7 @@ Socket::Socket(uint16_t _port, std::string const& _host) : port(_port), host(_ho
 	}
 
 	// Listen
-	const int max_queue = 100;
-	if (listen(socket_fd, max_queue) < 0)
+	if (listen(socket_fd, MAX_SOCKET_QUEUE) < 0)
 	{
 		close(socket_fd);
 		throw (std::runtime_error(std::strerror(errno)));

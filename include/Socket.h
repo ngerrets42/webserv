@@ -3,10 +3,12 @@
 
 # include "Core.h"
 
-# include "Server.h"
 # include "Pollable.h"
+# include "Server.h"
 
 namespace webserv {
+
+# define MAX_SOCKET_QUEUE 100
 
 class Socket : public Pollable
 {
