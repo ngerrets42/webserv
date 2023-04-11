@@ -115,8 +115,6 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 		exec_argv.push_back(strdup(cgi_exec.c_str()));
 		exec_argv.push_back(NULL);
 
-		std::cerr << "CGI (" << pipes.in[1] << ", " << pipes.out[0] << ") executing: " << exec_argv[0] << std::endl;
-
 		// CHange directory
 		if (chdir(cgi_path.c_str()) != 0)
 		{
@@ -131,7 +129,7 @@ CGI::CGI(std::vector<std::string>& env, Server& server, Location& loc, std::stri
 		{
 			std::string status = "status: 500 Internal Server Error\r\n";
 			std::cout << status << std::endl;
-			std::cerr << "CGI::CGI() execve error" << std::endl;
+			std::cerr << "CGI (" << pipes.in[1] << ", " << pipes.out[0] <<") execve error \"" << strerror(errno) << "\", sending internal server error" << std::endl;
 			for (auto* p : exec_argv)
 				free(p);
 			exit(1);
@@ -210,7 +208,6 @@ void CGI::on_pollin(pollable_map_t& fd_map)
 		close_out(fd_map);
 	else if (static_cast<size_t>(read_size) != MAX_SEND_BUFFER_SIZE)
 		buffer_out.resize(read_size);
-	std::cout << ": " << buffer_out.size() << " Bytes read" << std::endl;
 }
 
 // WRITE TO CGI
