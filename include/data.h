@@ -9,6 +9,7 @@ namespace data
 {
 	std::vector<char> receive(sockfd_t fd, size_t max_size, std::function<void()> const& on_zero = nullptr);
 
+	bool file_is_valid(std::string const& fpath);
 	size_t get_file_size(std::string const& fpath);
 
 	ssize_t send(sockfd_t fd, std::vector<char> const& buffer);

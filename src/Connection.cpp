@@ -7,20 +7,18 @@
 #include "html.h"
 
 #include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <exception>
-#include <ios>
-#include <sstream>
-#include <sys/_types/_size_t.h>
-#include <sys/_types/_ssize_t.h>
-#include <sys/poll.h>
-#include <sys/signal.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <unordered_map>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <cstring>
+// #include <ctime>
+// #include <exception>
+// #include <ios>
+// #include <sstream>
+// #include <sys/poll.h>
+// #include <sys/signal.h>
+// #include <sys/wait.h>
+// #include <unistd.h>
+// #include <unordered_map>
 
 namespace webserv {
 
@@ -50,15 +48,8 @@ Connection::HandlerData::HandlerData()
 
 void Connection::reset_time_remaining(void)
 {
-	// std::cout << "time reset" << std::endl;
 	last_time = std::time(nullptr);
 }
-
-// POLL
-// void Connection::on_pollnval(pollable_map_t& fd_map)
-// {
-// 	std::cout << "Connection::on_pollnval" << std::endl;
-// }
 
 void Connection::on_post_poll(pollable_map_t& fd_map)
 {
@@ -79,7 +70,6 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 	if (state == CLOSE) return ;
 
 	size_t curr_time = std::time(nullptr);
-	// std::cout << CONNECTION_LIFETIME - (curr_time - last_time) << std::endl;
 	if (curr_time - last_time >= CONNECTION_LIFETIME)
 	{
 		std::cout << '(' << socket_fd << "): " << "Connection closing due to timeout" << std::endl;
@@ -89,21 +79,19 @@ void Connection::on_post_poll(pollable_map_t& fd_map)
 
 void Connection::on_pollhup(pollable_map_t& fd_map, sockfd_t fd)
 {
-	// std::cout << "Connection::on_pollhup" << std::endl;
-	(void)fd_map;
-	(void)fd;
+	(void)fd_map; (void)fd;
 	if (handler_data.cgi != nullptr)
 	{
 		handler_data.cgi->close_pipes(fd_map);
 		// Kill with SIGTERM because otherwise some CGI's will take too long (or get stuck on cgi.FieldStorage())
-		kill(handler_data.cgi->get_pid(), SIGTERM);
+		::kill(handler_data.cgi->get_pid(), SIGTERM);
 		int wstatus;
 		int rpid = waitpid(handler_data.cgi->get_pid(), &wstatus, WNOHANG);
 		if (rpid > 0)
 		{
 			delete handler_data.cgi;
 			handler_data.cgi = nullptr;
-			std::cout << '(' << socket_fd << "): " << "CGI forced exit, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
+			std::cout << '(' << socket_fd << "): " << "CGI SIGTERM exit, exitcode: " << WEXITSTATUS(wstatus) << std::endl;
 		}
 	}
 	// Set self to close, so the connection can be closed by an external observer
@@ -421,22 +409,19 @@ void Connection::new_response(void)
 		&& handler_data.current_response.status_code.front() != '2' // Codes starting with 2 are OK etc
 		&& handler_data.current_response.status_code.front() != '3') // Codes starting with 3 are redirects
 	{
-		std::cout << '(' << socket_fd << "): "
-			<< "STATUS " << handler_data.current_response.status_code << std::endl;
-
-		// handler_data.current_request.fields["connection"] = "close";
 		std::string error_path = server.get_error_page(std::stoi(handler_data.current_response.status_code), loc);
-std::cerr << "getting error page :" + error_path << std::endl;
+		
+		std::cout << '(' << socket_fd << "): "
+			<< "STATUS " << handler_data.current_response.status_code
+			<< " getting error page: {" + error_path << '}' << std::endl;
 
 		handler_data.current_response.content_length = "0";
 		if (!error_path.empty())
 		{
-			std::string fpath = error_path;
-std::cerr << "error fpath :" << fpath << std::endl;
-			handler_data.current_response.content_type = content_type_from_ext(fpath);
-			handler_data.current_response.content_length = std::to_string(data::get_file_size(fpath));
+			handler_data.current_response.content_type = content_type_from_ext(error_path);
+			handler_data.current_response.content_length = std::to_string(data::get_file_size(error_path));
 
-			handler_data.file.open(fpath, std::ios_base::binary);
+			handler_data.file.open(error_path, std::ios_base::binary);
 		}
 		if (error_path.empty() || !handler_data.file)
 		{
@@ -455,7 +440,6 @@ std::cerr << "error fpath :" << fpath << std::endl;
 	}
 
 	// Add final headers
-
 	if (!handler_data.current_response.content_length.empty())
 		handler_data.current_response.add_http_header("content-length", handler_data.current_response.content_length);
 
@@ -472,8 +456,6 @@ std::cerr << "error fpath :" << fpath << std::endl;
 
 	// Set last_response for debugging purposes
 	last_response = handler_data.current_response;
-
-	// continue_response();
 }
 
 void Connection::new_response_get(Server const& server, Location const& loc)
@@ -505,13 +487,17 @@ void Connection::new_response_get(Server const& server, Location const& loc)
 	// No custom page (index), so we have to get the file from fpath (or send 404 not found)
 	if (handler_data.custom_page.empty())
 	{
+
+
 		handler_data.current_response.content_length = std::to_string(
 			data::get_file_size(fpath));
 
 		// Open file, no file = 404
 		handler_data.file.open(fpath, std::ios_base::binary);
-		if (!handler_data.file)
+		if (!handler_data.file || !data::file_is_valid(fpath))
 		{
+			handler_data.file.close();
+			handler_data.file.clear();
 			std::cout << '(' << socket_fd << "): " << "ERROR 404" << std::endl;
 			handler_data.current_response.set_status_code("404");
 			return ;

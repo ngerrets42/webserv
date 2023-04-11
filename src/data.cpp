@@ -1,9 +1,23 @@
 #include "data.h"
 
+#include <sys/stat.h>
+
 namespace webserv {
 
 namespace data
 {
+
+	bool file_is_valid(std::string const& fpath)
+	{
+		struct stat buf;
+		if(stat(fpath.c_str(), &buf) == 0)
+		{
+			if( (buf.st_mode & S_IFREG) != 0 )
+				return (true);
+		}
+		return (false);
+	}
+
 	// Return a buffer of data that should contain the header of the request
 	std::vector<char> receive(sockfd_t fd, size_t max_size, std::function<void()> const& on_zero)
 	{
