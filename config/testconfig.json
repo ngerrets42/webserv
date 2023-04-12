@@ -2,7 +2,7 @@
 	"servers": [
 		{
 			"listen": 8080,
-			"host": "localhost",
+			"host": "0.0.0.0",
 			"server_names": ["test"],
 			"index": "index_default.html",
 			"allowed_methods": ["GET"],
@@ -11,8 +11,8 @@
 		},
 		{
 			"listen": 8080,
-			"host": "localhost",
-			"server_names": ["localhost"],
+			"host": "0.0.0.0",
+			"server_names": ["localhost","f1r5s21.codam.nl"],
 			"index": "index.html",
 
 			"error_pages": {
@@ -50,7 +50,7 @@
 		},
 		{
 			"listen": 9000,
-			"host": "localhost",
+			"host": "0.0.0.0",
 			"server_names": ["localhost"],
 			"index": "index_dif_port.html",
 			"allowed_methods": ["GET"],
@@ -59,7 +59,7 @@
 		},
 		{
 			"listen": 8080,
-			"host": "localhost",
+			"host": "0.0.0.0",
 			"server_names": ["doogle.com"],
 			"index": "doogle.html",
 			"allowed_methods": ["GET"],
@@ -68,7 +68,7 @@
 		},
 		{
 			"listen": 8080,
-			"host": "localhost",
+			"host": "0.0.0.0",
 			"server_names": ["zing.com"],
 			"index": "zing.html",
 			"allowed_methods": ["GET"],
